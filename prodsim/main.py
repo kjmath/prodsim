@@ -15,9 +15,9 @@ def run(input_file):
 
         while factory_time < sim_time:
 
-            factory.update_production()
-            factory.update_critical_times(prod_time)
-            prod_time = factory.get_next_crit_time()
+            Factory.update_factory()
+            Factory.update_critical_times(prod_time)
+            prod_time = Factory.get_next_crit_time()
         """
 
 

@@ -99,24 +99,61 @@ class PartType:
         self.name = name
         self.arrival_prob_dist = arrival_prob_dist
         self.arrival_params = arrival_params
+        self.part_arrival_time = 0
+
+    def get_part_arrival_time(self):
+        '''Get arrival time for next part from probability distribution.
+
+        Returns:
+            scalar: part arrival time [units: simulator time units].
+        '''
+
+        prob_dist_func = getattr(np.random, self.arrival_prob_dist)
+        arrival_time = prob_dist_func(**self.arrival_params)
+        return arrival_time
+
+    def update_part_arrival_time(self, prod_time):
+        ''' Update the part_arrival_time attribute.
+
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
+        '''
+
+        self.part_arrival_time = self.get_part_arrival_time() + prod_time
 
 
 class ProductionLine:
 
-    def __init__(self, part_type_name, process_stations):
+    def __init__(self, part_type, process_stations):
         '''Create a production line object.
 
         Arguments:
-            part_type_name (string): same string name of corresponding PartType object.
+            part_type (PartType class object): part type instance corresponding to the part type
+                of the production line.
             process_stations (list): ordered list of Process objects representing the
                 production line for the designated part type. 
         '''
 
-        self.part_type_name = part_type_name
+        self.part_type = part_type
         self.process_stations = process_stations
 
-    def end_process(process):
-        pass
+    def end_process(self, process):
+        '''End a process and updates next process buffer, assuming process currently has 
+            an in-process part moving in the current production line.
+
+        Arguments:
+            process (Process class object): process to be ended. 
+        '''
+
+        if process.part_in_process == self.part_type:
+        
+            proc_index = self.process_stations.index(process)
+
+            if proc_index == len(self.process_stations - 1):
+                process.part_in_process = None
+            elif not self.process_stations[proc_index + 1].is_buffer_full():
+                process.part_in_process = None
+                self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
 
 
 class Factory:
@@ -132,6 +169,8 @@ class Factory:
 
         self.prod_lines = prod_lines
 
+        # need self.part_types, include arrivals in crit time dict
+
         all_processes = []
         crit_time_dict = {}
         buffer_full_dict = {}
@@ -145,7 +184,7 @@ class Factory:
         self.crit_time_dict = crit_time_dict
         self.buffer_full_dict = buffer_full_dict
 
-    def update_production(self):
+    def update_factory(self):
 
         pass
 
