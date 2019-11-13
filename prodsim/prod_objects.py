@@ -149,7 +149,7 @@ class ProductionLine:
         
             proc_index = self.process_stations.index(process)
 
-            if proc_index == len(self.process_stations - 1):
+            if proc_index == len(self.process_stations) - 1:
                 process.part_in_process = None
             elif not self.process_stations[proc_index + 1].is_buffer_full():
                 process.part_in_process = None
@@ -169,12 +169,13 @@ class Factory:
 
         self.prod_lines = prod_lines
 
-        # need self.part_types, include arrivals in crit time dict
-
         all_processes = []
         crit_time_dict = {}
         buffer_full_dict = {}
+        part_type_list = []
         for line in prod_lines:
+            part_type_list.append(line.part_type)
+            crit_time_dict[line.part_type.name] = 0
             for process in line.process_stations:
                 if process.name not in crit_time_dict:
                     all_processes.append(process)
@@ -183,6 +184,7 @@ class Factory:
         self.all_processes = all_processes
         self.crit_time_dict = crit_time_dict
         self.buffer_full_dict = buffer_full_dict
+        self.part_type_list = part_type_list
 
     def update_factory(self):
 

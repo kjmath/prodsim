@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from prodsim.prod_objects import Process, Factory, PartType
+from prodsim.prod_objects import Process, Factory, PartType, ProductionLine
 
 class TestProcessMethods(unittest.TestCase):
     '''Test cases for Process class.'''
@@ -21,7 +21,7 @@ class TestProcessMethods(unittest.TestCase):
         self.assertTrue(self.process_instance.name == 'test')
         self.assertTrue(self.process_instance.prob_dist == 'uniform')
 
-    def test_start_process(self):
+    def test_start_process1(self):
         '''Test Process.start_process() method, with no part in 
             process and empty buffer.'''
         sample_prod_time = 5
@@ -96,6 +96,7 @@ class TestProcessMethods(unittest.TestCase):
 
 
 class TestPartTypeMethods(unittest.TestCase):
+    '''Test cases for PartType class.'''
 
     def setUp(self):
         self.part_type_inst1 = PartType(
@@ -114,6 +115,68 @@ class TestPartTypeMethods(unittest.TestCase):
         self.assertTrue(self.part_type_inst1.part_arrival_time 
                         == sample_prod_time + pt)
 
+
+class TestProductionLineMethods(unittest.TestCase):
+    '''Test cases for ProductionLine class.'''
+
+    def setUp(self):
+        self.process_instance1 = Process(
+            'test1', 'uniform', {'low': 2, 'high': 4}, 3)
+        self.process_instance2 = Process(
+            'test2', 'uniform', {'low': 2, 'high': 4}, 3)
+        self.process_instance3 = Process(
+            'test3', 'uniform', {'low': 2, 'high': 4}, 1)
+        self.process_list = [self.process_instance1, self.process_instance2, 
+                        self.process_instance3]
+        self.part_type_inst1 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+        self.prod_line1 = ProductionLine(self.part_type_inst1, 
+                                         self.process_list)
+
+    def test_production_line_init(self):
+        '''Test ProductionLine.__init__() method.'''
+        self.assertTrue(self.prod_line1.process_stations == 
+                        self.process_list)
+        self.assertTrue(self.prod_line1.part_type == 
+                        self.part_type_inst1)
+
+    def test_end_process1(self):
+        '''Test ProductionLine.end_process() method with correct part 
+            in processs2 and empty buffer for process3.'''
+        self.process_instance2.part_in_process = self.part_type_inst1
+        self.prod_line1.end_process(self.process_instance2)
+        self.assertIsNone(self.process_instance2.part_in_process)
+        self.assertTrue(self.process_instance3.parts_in_buffer == 
+                        [self.part_type_inst1])
+
+    def test_end_process2(self):
+        '''Test ProductionLine.end_process() method with correct part
+            in process2 and full buffer for process3.'''
+        self.process_instance2.part_in_process = self.part_type_inst1
+        self.process_instance3.add_to_buffer(self.part_type_inst1)
+        self.prod_line1.end_process(self.process_instance2)
+        self.assertTrue(self.process_instance2.part_in_process == 
+                        self.part_type_inst1)
+        self.assertTrue(self.process_instance3.parts_in_buffer == 
+                        [self.part_type_inst1])
+
+    def test_end_process3(self):
+        '''Test Production.end_process() method with correct part
+            in process3, where process3 is the final process.'''
+        self.process_instance3.part_in_process = self.part_type_inst1
+        self.prod_line1.end_process(self.process_instance3)
+        self.assertIsNone(self.process_instance3.part_in_process)
+
+    def test_end_process4(self):
+        '''Test Production.end_process() method with incorrect part
+            in process2, and empty buffer for process3.'''
+        part_type_inst2 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+        self.process_instance2.part_in_process = part_type_inst2
+        self.prod_line1.end_process(self.process_instance2)
+        self.assertTrue(self.process_instance2.part_in_process == 
+                        part_type_inst2)
+        self.assertTrue(not self.process_instance3.parts_in_buffer)
 
 class TestFactoryMethods(unittest.TestCase):
 
