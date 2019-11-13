@@ -1,0 +1,8 @@
+numpy
+
+[docs]
+numpy
+
+[test]
+numpy
+numpy
