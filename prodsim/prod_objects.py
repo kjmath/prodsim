@@ -162,9 +162,8 @@ class Factory:
         '''Create a factory object.
 
         Arguments:
-            prod_lines (string): same string name of corresponding PartType object.
-            process_stations (list): ordered list of Process objects representing the
-                production line for the designated part type. 
+            prod_lines (list of ProductionLine objects): list of production 
+                lines in factory.
         '''
 
         self.prod_lines = prod_lines
@@ -175,12 +174,12 @@ class Factory:
         part_type_list = []
         for line in prod_lines:
             part_type_list.append(line.part_type)
-            crit_time_dict[line.part_type.name] = 0
+            crit_time_dict[line.part_type] = 0
             for process in line.process_stations:
-                if process.name not in crit_time_dict:
+                if process not in all_processes:
                     all_processes.append(process)
-                    crit_time_dict[process.name] = 0
-                    buffer_full_dict[process.name] = False
+                    crit_time_dict[process] = 0
+                    buffer_full_dict[process] = False
         self.all_processes = all_processes
         self.crit_time_dict = crit_time_dict
         self.buffer_full_dict = buffer_full_dict

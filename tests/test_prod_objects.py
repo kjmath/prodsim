@@ -1,3 +1,5 @@
+'''Test cases for classes in prod_objects.py.'''
+
 import unittest
 import numpy as np
 
@@ -179,9 +181,63 @@ class TestProductionLineMethods(unittest.TestCase):
         self.assertTrue(not self.process_instance3.parts_in_buffer)
 
 class TestFactoryMethods(unittest.TestCase):
+    '''Test cases for Factory class.'''
 
     def setUp(self):
-        pass
+        self.process_instance1 = Process(
+            'test1', 'uniform', {'low': 2, 'high': 4}, 3)
+        self.process_instance2 = Process(
+            'test2', 'uniform', {'low': 2, 'high': 4}, 3)
+        self.process_instance3 = Process(
+            'test3', 'uniform', {'low': 2, 'high': 4}, 1)
+        self.process_instance4 = Process(
+            'test4', 'uniform', {'low': 2, 'high': 4}, 1)
+        self.process_list1 = [self.process_instance1, self.process_instance2, 
+                              self.process_instance3]
+        self.process_list2 = [self.process_instance1, self.process_instance2, 
+                              self.process_instance4]
+        self.part_type_inst1 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+        self.part_type_inst2 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+        self.prod_line1 = ProductionLine(self.part_type_inst1, 
+                                         self.process_list1)
+        self.prod_line2 = ProductionLine(self.part_type_inst2,
+                                         self.process_list2)
+        self.prod_line_list = [self.prod_line1, self.prod_line2]
+        self.factory = Factory(self.prod_line_list)
+
+    def test_factory_init1(self):
+        '''Test Factory.__init__() prod_lines attribute.'''
+        self.assertTrue(self.factory.prod_lines == self.prod_line_list)
+
+    def test_factory_init2(self):
+        '''Test Factory.__init__() all_process attribute.'''
+        test_process_list = [self.process_instance4, self.process_instance1, 
+                             self.process_instance3, self.process_instance2]
+        self.assertTrue(set(self.factory.all_processes) == 
+                        set(test_process_list))
+
+    def test_factory_init3(self):
+        '''Test Factory.__init__() crit_time_dict attribute.'''
+        test_crit_time_dict = {self.part_type_inst1: 0, self.part_type_inst2: 0,
+                               self.process_instance1: 0, self.process_instance2: 0,
+                               self.process_instance3: 0, self.process_instance4: 0}
+        self.assertTrue(self.factory.crit_time_dict ==
+                        test_crit_time_dict)
+
+    def test_factory_init4(self):
+        '''Test Factory.__init__() buffer_full_dict attribute.'''
+        test_buffer_full_dict = {self.process_instance1: False, self.process_instance2: False,
+                                 self.process_instance3: False, self.process_instance4: False}
+        self.assertTrue(self.factory.buffer_full_dict ==
+                        test_buffer_full_dict)
+
+    def test_factory_init5(self):
+        '''Test Factory.__init__() part_type_list attribute.'''
+        test_part_type_list = [self.part_type_inst2, self.part_type_inst1]
+        self.assertTrue(set(self.factory.part_type_list) ==
+                        set(test_part_type_list))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
