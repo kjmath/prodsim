@@ -75,6 +75,7 @@ class TestProcessMethods(unittest.TestCase):
 
     def test_is_buffer_full(self):
         '''Test Process.is_buffer_full() method.'''
+        self.assertFalse(self.process_instance.is_buffer_full())
         self.process_instance.parts_in_buffer = \
             [self.part_type_inst1, self.part_type_inst2, self.part_type_inst3]
         self.assertTrue(self.process_instance.is_buffer_full())
@@ -92,6 +93,26 @@ class TestProcessMethods(unittest.TestCase):
         self.process_instance.remove_first_in_buffer()
         self.assertTrue(self.process_instance.parts_in_buffer ==
                         [self.part_type_inst2, self.part_type_inst3])
+
+
+class TestPartTypeMethods(unittest.TestCase):
+
+    def setUp(self):
+        self.part_type_inst1 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+
+    def test_get_part_arrival_time(self):
+        arrival_time = self.part_type_inst1.get_part_arrival_time()
+        self.assertTrue(1 <= arrival_time < 5)
+
+    def test_update_part_arrival_time(self):
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt = np.random.uniform(low=1, high=5)
+        np.random.seed(0)
+        self.part_type_inst1.update_part_arrival_time(sample_prod_time)
+        self.assertTrue(self.part_type_inst1.part_arrival_time 
+                        == sample_prod_time + pt)
 
 
 class TestFactoryMethods(unittest.TestCase):
