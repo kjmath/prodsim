@@ -4,7 +4,8 @@ import numpy as np
 class Process:
 
     def __init__(self, name, prob_dist, params, buffer_cap):
-        '''Create a production process object.
+        '''Create a production process object. Assumes no more than one part can be 
+            currently in the process.
 
         Arguments:
             name (string): Unique name of the process.
@@ -35,6 +36,9 @@ class Process:
                 self.update_next_crit_time(prod_time)
                 self.part_in_process = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
+                return True
+
+        return False
 
 
     def get_next_crit_time(self):
@@ -155,6 +159,21 @@ class ProductionLine:
                 process.part_in_process = None
                 self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
 
+    def add_arriving_part(self, prod_time):
+        '''Add an arriving part to the buffer of the first process in the production line, 
+            assuming the buffer is not full. Update next critical time.
+        
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
+        '''
+
+        first_process = self.process_stations[0]
+
+        if not first_process.is_buffer_full():
+            first_process.add_to_buffer(self.part_type)
+
+        self.part_type.update_next_crit_time(prod_time)
+
 
 class Factory:
 
@@ -182,32 +201,57 @@ class Factory:
                     all_processes.append(process)
                     crit_time_dict[process] = -1 
                     buffer_full_dict[process] = False
-        self.all_processes = all_processes
+        self.all_processes = all_processes # TODO not sure if needed
         self.crit_time_dict = crit_time_dict
-        self.buffer_full_dict = buffer_full_dict
+        self.buffer_full_dict = buffer_full_dict # TODO not sure if needed
         self.part_type_dict = part_type_dict
 
-    def update_factory(self):
+    def update_factory(self, prod_time):
+        '''Update the factory for current critical time: update process or incoming 
+            part buffer for critical time.
 
-        crit_process = self.find_crit_time_process()
-        crit_part = crit_process.part_in_process
-        crit_prod_line = self.part_type_dict[crit_part]
-        # end process
-        # start process
-        # update critical times dictionary
-        # if crit time process on buffer full dict
-            # go through all process, end and restart, update crit times
-            # if any actually restarted, run again
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
+        '''
 
+        # identify critical time process/part
+        crit_obj = self.find_crit_time_object()
+        cycle = False
 
-    def find_crit_time_process(self, prod_time):
+        # if process, end and restart process
+        if isinstance(crit_obj, Process):
+            cycle = crit_obj.is_buffer_full()
+            crit_part = crit_obj.part_in_process
+            crit_prod_line = self.part_type_dict[crit_part]
+            crit_prod_line.end_process(crit_obj)
+            crit_obj.start_process(prod_time)
+
+        # if part type, add part to first process buffer
+        elif isinstance(crit_obj, PartType):
+            crit_prod_line = self.part_type_dict[crit_obj]
+            crit_prod_line.add_arriving_part(prod_time)
+
+        # if critical time process had a full buffer, it may have been 
+        # preventing other processes from progressing; end/restart all processes
+        # if this is the case.
+        if cycle:
+            update_count = 1
+            while update_count > 0:
+                update_count = 0
+                for process in self.all_processes:
+                    part = process.part_in_process
+                    prod_line = self.part_type_dict[part]
+                    prod_line.end_process(process)
+                    update_count += process.start_process()
+
+    def find_crit_time_object(self, prod_time):
         '''Find the critical time process at current production time.
 
         Arguments:
             prod_time (scalar): current production/factory time of the simulation.
 
         Returns:
-            Process object or None: returns critical time process, 
+            Process or PartType object or None: returns critical time process or part, 
                 or None if not found.'''
 
         for process in self.crit_time_dict:
@@ -217,12 +261,13 @@ class Factory:
         return None
             
 
-    def update_crit_times(self, process):
+    def update_crit_time_dict(self, process):
+        '''Update the crit_time_dict for a given process or part.
 
-        self.crit_time_dict
+        Arguments:
+            process (Process or PartType object): process or part
+                whose critical time needs updated in dictionary.
+        '''
 
-    def update_buffer_full_dict(self):
-
-        pass
-
+        self.crit_time_dict[process] = process.next_crit_time
 

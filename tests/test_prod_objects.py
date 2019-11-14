@@ -125,7 +125,7 @@ class TestProductionLineMethods(unittest.TestCase):
 
     def setUp(self):
         self.process_instance1 = Process(
-            'test1', 'uniform', {'low': 2, 'high': 4}, 3)
+            'test1', 'uniform', {'low': 2, 'high': 4}, 1)
         self.process_instance2 = Process(
             'test2', 'uniform', {'low': 2, 'high': 4}, 3)
         self.process_instance3 = Process(
@@ -165,14 +165,14 @@ class TestProductionLineMethods(unittest.TestCase):
                         [self.part_type_inst1])
 
     def test_end_process3(self):
-        '''Test Production.end_process() method with correct part
+        '''Test ProductionLine.end_process() method with correct part
             in process3, where process3 is the final process.'''
         self.process_instance3.part_in_process = self.part_type_inst1
         self.prod_line1.end_process(self.process_instance3)
         self.assertIsNone(self.process_instance3.part_in_process)
 
     def test_end_process4(self):
-        '''Test Production.end_process() method with incorrect part
+        '''Test ProductionLine.end_process() method with incorrect part
             in process2, and empty buffer for process3.'''
         part_type_inst2 = PartType(
             'test_part1', 'uniform', {'low': 1, 'high': 5})
@@ -181,6 +181,35 @@ class TestProductionLineMethods(unittest.TestCase):
         self.assertTrue(self.process_instance2.part_in_process == 
                         part_type_inst2)
         self.assertTrue(not self.process_instance3.parts_in_buffer)
+
+    def test_add_arriving_part1(self):
+        '''Test ProductionLine.add_arriving_part() method with empty first
+            process buffer.'''
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt = np.random.uniform(low=1, high=5)
+        np.random.seed(0)    
+        self.prod_line1.add_arriving_part(sample_prod_time)
+        self.assertTrue(self.part_type_inst1.next_crit_time 
+                        == sample_prod_time + pt)
+        self.assertTrue(self.prod_line1.process_stations[0].parts_in_buffer ==
+                        [self.part_type_inst1])
+
+    def test_add_arriving_part2(self):
+        '''Test ProductionLine.add_arriving_part() method with full first
+            process buffer.'''
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt = np.random.uniform(low=1, high=5)
+        np.random.seed(0)
+        part_type_inst2 = PartType(
+            'test_part1', 'uniform', {'low': 1, 'high': 5})
+        self.process_instance1.add_to_buffer(part_type_inst2)
+        self.prod_line1.add_arriving_part(sample_prod_time)
+        self.assertTrue(self.part_type_inst1.next_crit_time 
+                        == sample_prod_time + pt)
+        self.assertTrue(self.prod_line1.process_stations[0].parts_in_buffer ==
+                        [part_type_inst2])
 
 class TestFactoryMethods(unittest.TestCase):
     '''Test cases for Factory class.'''
@@ -242,17 +271,17 @@ class TestFactoryMethods(unittest.TestCase):
         self.assertTrue(set(self.factory.part_type_dict) ==
                         set(test_part_type_dict))
 
-    def test_find_crit_time_process1(self):
-        '''Test Factory.find_crit_time_process() for a critical time in dictionary.'''
+    def test_find_crit_time_object1(self):
+        '''Test Factory.find_crit_time_object() for a critical time in dictionary.'''
         self.factory.crit_time_dict[self.process_instance3] = 5
         sample_prod_time = 5
-        self.assertTrue(self.factory.find_crit_time_process(sample_prod_time) ==
+        self.assertTrue(self.factory.find_crit_time_object(sample_prod_time) ==
                         self.process_instance3)
 
-    def test_find_crit_time_process2(self):
-        '''Test Factory.find_crit_time_process() for no critical time in dictionary.'''
+    def test_find_crit_time_object2(self):
+        '''Test Factory.find_crit_time_object() for no critical time in dictionary.'''
         sample_prod_time = 5
-        self.assertIsNone(self.factory.find_crit_time_process(sample_prod_time))
+        self.assertIsNone(self.factory.find_crit_time_object(sample_prod_time))
 
 
 if __name__ == '__main__':
