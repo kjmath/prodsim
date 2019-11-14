@@ -105,10 +105,12 @@ class TestPartTypeMethods(unittest.TestCase):
             'test_part1', 'uniform', {'low': 1, 'high': 5})
 
     def test_get_part_arrival_time(self):
+        '''Test PartType.get_part_arrival_time() method.'''
         arrival_time = self.part_type_inst1.get_part_arrival_time()
         self.assertTrue(1 <= arrival_time < 5)
 
     def test_update_part_arrival_time(self):
+        '''Test PartType.updage_part_arrival_time() method.'''
         sample_prod_time = 5
         np.random.seed(0)
         pt = np.random.uniform(low=1, high=5)
@@ -199,7 +201,7 @@ class TestFactoryMethods(unittest.TestCase):
         self.part_type_inst1 = PartType(
             'test_part1', 'uniform', {'low': 1, 'high': 5})
         self.part_type_inst2 = PartType(
-            'test_part1', 'uniform', {'low': 1, 'high': 5})
+            'test_part2', 'uniform', {'low': 1, 'high': 5})
         self.prod_line1 = ProductionLine(self.part_type_inst1, 
                                          self.process_list1)
         self.prod_line2 = ProductionLine(self.part_type_inst2,
@@ -220,9 +222,9 @@ class TestFactoryMethods(unittest.TestCase):
 
     def test_factory_init3(self):
         '''Test Factory.__init__() crit_time_dict attribute.'''
-        test_crit_time_dict = {self.part_type_inst1: 0, self.part_type_inst2: 0,
-                               self.process_instance1: 0, self.process_instance2: 0,
-                               self.process_instance3: 0, self.process_instance4: 0}
+        test_crit_time_dict = {self.part_type_inst1: -1, self.part_type_inst2: -1,
+                               self.process_instance1: -1, self.process_instance2: -1,
+                               self.process_instance3: -1, self.process_instance4: -1}
         self.assertTrue(self.factory.crit_time_dict ==
                         test_crit_time_dict)
 
@@ -238,6 +240,19 @@ class TestFactoryMethods(unittest.TestCase):
         test_part_type_list = [self.part_type_inst2, self.part_type_inst1]
         self.assertTrue(set(self.factory.part_type_list) ==
                         set(test_part_type_list))
+
+    def test_find_crit_time_process1(self):
+        '''Test Factory.find_crit_time_process() for a critical time in dictionary.'''
+        self.factory.crit_time_dict[self.process_instance3] = 5
+        sample_prod_time = 5
+        self.assertTrue(self.factory.find_crit_time_process(sample_prod_time) ==
+                        self.process_instance3)
+
+    def test_find_crit_time_process2(self):
+        '''Test Factory.find_crit_time_process() for no critical time in dictionary.'''
+        sample_prod_time = 5
+        self.assertIsNone(self.factory.find_crit_time_process(sample_prod_time))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

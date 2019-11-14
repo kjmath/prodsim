@@ -168,17 +168,19 @@ class Factory:
 
         self.prod_lines = prod_lines
 
-        all_processes = []
-        crit_time_dict = {}
-        buffer_full_dict = {}
-        part_type_list = []
+        all_processes = [] # list for storing all factory processes
+        crit_time_dict = {} # dictionary for storing simulator critical times
+        buffer_full_dict = {} # dictionary for storing processes with full buffers
+        part_type_list = [] # list for storing all part types
+
+        # intialize above lists/dictionaries
         for line in prod_lines:
             part_type_list.append(line.part_type)
-            crit_time_dict[line.part_type] = 0
+            crit_time_dict[line.part_type] = -1 
             for process in line.process_stations:
                 if process not in all_processes:
                     all_processes.append(process)
-                    crit_time_dict[process] = 0
+                    crit_time_dict[process] = -1 
                     buffer_full_dict[process] = False
         self.all_processes = all_processes
         self.crit_time_dict = crit_time_dict
@@ -189,6 +191,24 @@ class Factory:
 
         pass
 
+    def find_crit_time_process(self, prod_time):
+        '''Find the critical time process at current production time.
+
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
+
+        Returns:
+            Process object or None: returns critical time process, 
+                or None if not found.'''
+
+        for process in self.crit_time_dict:
+            if self.crit_time_dict[process] == prod_time:
+                return process
+
+        return None
+            
+
+
     def update_crit_times(self):
 
         pass
@@ -196,3 +216,5 @@ class Factory:
     def update_buffer_full_dict(self):
 
         pass
+
+
