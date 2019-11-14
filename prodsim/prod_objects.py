@@ -24,7 +24,7 @@ class Process:
         self.buffer_cap = buffer_cap 
         self.part_in_process = None # instance of PartType in process, or None
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
-        self.process_completion_time = 0 # initialize time of next completed process
+        self.next_crit_time = 0 # initialize time of next completed process
 
     def start_process(self, prod_time):
         '''start the process: update completion time, move first part in buffer
@@ -32,12 +32,12 @@ class Process:
 
         if self.part_in_process is None:
             if self.parts_in_buffer:
-                self.update_completion_time(prod_time)
+                self.update_next_crit_time(prod_time)
                 self.part_in_process = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
 
 
-    def get_process_time(self):
+    def get_next_crit_time(self):
         '''Get process time for next process from probability distribution.
 
         Returns:
@@ -48,14 +48,14 @@ class Process:
         process_time = prob_dist_func(**self.params)
         return process_time
 
-    def update_completion_time(self, prod_time):
-        ''' Update the process_completion_time attribute.
+    def update_next_crit_time(self, prod_time):
+        ''' Update the next_crit_time attribute.
 
         Arguments:
             prod_time (scalar): current production/factory time of the simulation.
         '''
 
-        self.process_completion_time = self.get_process_time() + prod_time
+        self.next_crit_time = self.get_next_crit_time() + prod_time
 
     def is_buffer_full(self):
         '''Check if buffer BEFORE process is full.
@@ -99,9 +99,9 @@ class PartType:
         self.name = name
         self.arrival_prob_dist = arrival_prob_dist
         self.arrival_params = arrival_params
-        self.part_arrival_time = 0
+        self.next_crit_time = 0
 
-    def get_part_arrival_time(self):
+    def get_next_crit_time(self):
         '''Get arrival time for next part from probability distribution.
 
         Returns:
@@ -112,14 +112,14 @@ class PartType:
         arrival_time = prob_dist_func(**self.arrival_params)
         return arrival_time
 
-    def update_part_arrival_time(self, prod_time):
-        ''' Update the part_arrival_time attribute.
+    def update_next_crit_time(self, prod_time):
+        ''' Update the next_crit_time attribute.
 
         Arguments:
             prod_time (scalar): current production/factory time of the simulation.
         '''
 
-        self.part_arrival_time = self.get_part_arrival_time() + prod_time
+        self.next_crit_time = self.get_next_crit_time() + prod_time
 
 
 class ProductionLine:
@@ -171,11 +171,11 @@ class Factory:
         all_processes = [] # list for storing all factory processes
         crit_time_dict = {} # dictionary for storing simulator critical times
         buffer_full_dict = {} # dictionary for storing processes with full buffers
-        part_type_list = [] # list for storing all part types
+        part_type_dict = {} # dictionary for mapping part types to production lines
 
         # intialize above lists/dictionaries
         for line in prod_lines:
-            part_type_list.append(line.part_type)
+            part_type_dict[line.part_type] = line
             crit_time_dict[line.part_type] = -1 
             for process in line.process_stations:
                 if process not in all_processes:
@@ -185,11 +185,20 @@ class Factory:
         self.all_processes = all_processes
         self.crit_time_dict = crit_time_dict
         self.buffer_full_dict = buffer_full_dict
-        self.part_type_list = part_type_list
+        self.part_type_dict = part_type_dict
 
     def update_factory(self):
 
-        pass
+        crit_process = self.find_crit_time_process()
+        crit_part = crit_process.part_in_process
+        crit_prod_line = self.part_type_dict[crit_part]
+        # end process
+        # start process
+        # update critical times dictionary
+        # if crit time process on buffer full dict
+            # go through all process, end and restart, update crit times
+            # if any actually restarted, run again
+
 
     def find_crit_time_process(self, prod_time):
         '''Find the critical time process at current production time.
@@ -208,10 +217,9 @@ class Factory:
         return None
             
 
+    def update_crit_times(self, process):
 
-    def update_crit_times(self):
-
-        pass
+        self.crit_time_dict
 
     def update_buffer_full_dict(self):
 
