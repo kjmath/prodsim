@@ -271,8 +271,6 @@ class Factory:
             self.crit_time_dict[process] = process.next_crit_time
 
     def get_next_crit_time(self):
-        '''Retrieve the next critical time from the crit_time_dict, only
-            considering values greater than 0.'''
+        '''Retrieve the next critical time from the crit_time_dict.'''
 
-        greater0 = [time for time in self.crit_time_dict.values() if time > 0]
-        return min(greater0)
+        return min(self.crit_time_dict.values())
