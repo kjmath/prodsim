@@ -251,9 +251,9 @@ class TestFactoryMethods(unittest.TestCase):
 
     def test_factory_init3(self):
         '''Test Factory.__init__() crit_time_dict attribute.'''
-        test_crit_time_dict = {self.part_type_inst1: -1, self.part_type_inst2: -1,
-                               self.process_instance1: -1, self.process_instance2: -1,
-                               self.process_instance3: -1, self.process_instance4: -1}
+        test_crit_time_dict = {self.part_type_inst1: 0, self.part_type_inst2: 0,
+                               self.process_instance1: 0, self.process_instance2: 0,
+                               self.process_instance3: 0, self.process_instance4: 0}
         self.assertTrue(self.factory.crit_time_dict ==
                         test_crit_time_dict)
 
@@ -283,6 +283,52 @@ class TestFactoryMethods(unittest.TestCase):
         sample_prod_time = 5
         self.assertIsNone(self.factory.find_crit_time_object(sample_prod_time))
 
+    def test_update_crit_time_dict(self):
+        '''Test Factory.update_crit_time_dict() method.'''
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt = np.random.uniform(low=1, high=5)
+        np.random.seed(0)
+        self.part_type_inst1.update_next_crit_time(sample_prod_time)
+        self.factory.update_crit_time_dict()
+        test_crit_time_dict = {self.part_type_inst1: sample_prod_time + pt, 
+                               self.part_type_inst2: 0, self.process_instance1: 0, 
+                               self.process_instance2: 0, self.process_instance3: 0,
+                               self.process_instance4: 0}
+        self.assertTrue(self.factory.crit_time_dict ==
+                        test_crit_time_dict)
+
+    def test_get_next_crit_time1(self):
+        '''Test Factory.get_next_crit_time() method, with one > 0 value in dict.'''
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt1 = np.random.uniform(low=1, high=5) + sample_prod_time
+        np.random.seed(0)
+        self.part_type_inst1.update_next_crit_time(sample_prod_time)
+        self.factory.update_crit_time_dict()
+        self.assertTrue(self.factory.get_next_crit_time() == pt1)
+    
+    def test_get_next_crit_time2(self):
+        '''Test Factory.get_next_crit_time() method, with two > 0 values in dict.'''
+        sample_prod_time = 5
+        np.random.seed(0)
+        pt1 = np.random.uniform(low=1, high=5) + sample_prod_time
+        pt2 = np.random.uniform(low=1, high=5) + sample_prod_time
+        np.random.seed(0)
+        self.part_type_inst1.update_next_crit_time(sample_prod_time)
+        self.part_type_inst2.update_next_crit_time(sample_prod_time)
+        self.factory.update_crit_time_dict()
+        self.assertTrue(self.factory.get_next_crit_time() == min([pt1, pt2]))
+    
+    def test_update_factory1(self):
+        pass
+        '''
+        sample_prod_time = 5
+        self.prod_line1.add_arriving_part
+        self.part_type_inst1.update_next_crit_time(sample_prod_time)
+        self.factory.update_crit_time_dict()
+        self.assertTrue(self.factory.get_next_crit_time() == pt1)'''
+    
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

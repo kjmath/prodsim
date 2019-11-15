@@ -195,11 +195,11 @@ class Factory:
         # intialize above lists/dictionaries
         for line in prod_lines:
             part_type_dict[line.part_type] = line
-            crit_time_dict[line.part_type] = -1 
+            crit_time_dict[line.part_type] = 0
             for process in line.process_stations:
                 if process not in all_processes:
                     all_processes.append(process)
-                    crit_time_dict[process] = -1 
+                    crit_time_dict[process] = 0
                     buffer_full_dict[process] = False
         self.all_processes = all_processes # TODO not sure if needed
         self.crit_time_dict = crit_time_dict
@@ -244,6 +244,8 @@ class Factory:
                     prod_line.end_process(process)
                     update_count += process.start_process()
 
+        self.update_crit_time_dict()
+
     def find_crit_time_object(self, prod_time):
         '''Find the critical time process at current production time.
 
@@ -261,13 +263,16 @@ class Factory:
         return None
             
 
-    def update_crit_time_dict(self, process):
-        '''Update the crit_time_dict for a given process or part.
-
-        Arguments:
-            process (Process or PartType object): process or part
-                whose critical time needs updated in dictionary.
+    def update_crit_time_dict(self):
+        '''Update the crit_time_dict for all processes.
         '''
 
-        self.crit_time_dict[process] = process.next_crit_time
+        for process in self.crit_time_dict:
+            self.crit_time_dict[process] = process.next_crit_time
 
+    def get_next_crit_time(self):
+        '''Retrieve the next critical time from the crit_time_dict, only
+            considering values greater than 0.'''
+
+        greater0 = [time for time in self.crit_time_dict.values() if time > 0]
+        return min(greater0)
