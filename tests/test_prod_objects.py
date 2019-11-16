@@ -211,6 +211,7 @@ class TestProductionLineMethods(unittest.TestCase):
         self.assertTrue(self.prod_line1.process_stations[0].parts_in_buffer ==
                         [part_type_inst2])
 
+
 class TestFactoryMethods(unittest.TestCase):
     '''Test cases for Factory class.'''
 
@@ -366,9 +367,28 @@ class TestFactoryMethods(unittest.TestCase):
        
     def test_update_factory2(self):
         '''Test Factory.update_factory() with newly initialized factory instance.'''
-        pass
-        sample_prod_time = 0
-        self.factory.update_factory(sample_prod_time)
+        np.random.seed(0)
+        self.factory.initialize_prod_lines()
+        first_prod_time = self.factory.get_next_crit_time()
+        self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst1, self.part_type_inst2])
+        self.factory.update_factory(first_prod_time)
+        np.random.seed(0)
+        pt1 = np.random.uniform(low=1, high=5)
+        pt2 = np.random.uniform(low=1, high=5)
+        add = np.random.uniform(low=1, high=5)
+        proc_add = np.random.uniform(low=2, high=4) + first_prod_time
+        if pt1 < pt2:
+            pt1 += add
+            self.assertTrue(self.process_instance1.part_in_process == self.part_type_inst1)
+            self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst2, self.part_type_inst1 ])
+        else:
+            pt2 += add
+            self.assertTrue(self.process_instance1.part_in_process == self.part_type_inst2)
+            self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst2, self.part_type_inst2])
+        test_crit_time_dict = {self.part_type_inst1: pt1, self.part_type_inst2: pt2,
+                               self.process_instance1: proc_add, self.process_instance2: 0,
+                               self.process_instance3: 0, self.process_instance4: 0}
+        self.assertTrue(self.factory.crit_time_dict == test_crit_time_dict)
 
 
 if __name__ == '__main__':

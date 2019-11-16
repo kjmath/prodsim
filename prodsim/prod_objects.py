@@ -233,6 +233,7 @@ class Factory:
         elif isinstance(crit_obj, PartType):
             crit_prod_line = self.part_type_dict[crit_obj]
             crit_prod_line.add_arriving_part(prod_time)
+            crit_prod_line.process_stations[0].start_process(prod_time)
 
         # if critical time process had a full buffer, it may have been 
         # preventing other processes from progressing; end/restart all processes
