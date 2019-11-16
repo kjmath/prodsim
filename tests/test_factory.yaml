@@ -1,0 +1,35 @@
+# Test file for factory simulation. Same inputs as TestFactoryMethods.setUp(). 
+# 2019-11-16
+
+# Input all processes that will be used for all part types/production lines. 
+processes:
+  - name: 'test1'
+    distribution: 'uniform'
+    parameters: {'low': 2, 'high': 4}
+    buffer_size: 3 # size of buffer BEFORE process
+  - name: 'test2'
+    distribution: 'uniform'
+    parameters: {'low': 2, 'high': 4}
+    buffer_size: 3 # size of buffer BEFORE process
+  - name: 'test3'
+    distribution: 'uniform'
+    parameters: {'low': 2, 'high': 4}
+    buffer_size: 1 # size of buffer BEFORE process
+  - name: 'test4'
+    distribution: 'uniform'
+    parameters: {'low': 2, 'high': 4}
+    buffer_size: 1 # size of buffer BEFORE process
+
+# Input all production lines used for manufacturing parts.
+production_lines:
+  - line_part_type: 'test_part1' # string describing part made on production line
+    part_arrival_distribution: 'uniform'
+    part_arrival_parameters: {'low': 1, 'high': 5}
+    process_list: ['test1', 'test2', 'test3'] # list of ordered processes for production line, processes much match exactly to processes listed in processes above
+  - line_part_type: 'test_part2'
+    part_arrival_distribution: 'uniform'
+    part_arrival_parameters: {'low': 1, 'high': 5}
+    process_list: ['test1', 'test2', 'test4']
+
+# Input desired length of simulation.
+simulation_time: 100 # simulation duration in same time units as distributions.
