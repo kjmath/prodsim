@@ -18,6 +18,8 @@ def main(args):
 
         prod_time = 0 # initialize factory time at 0
 
+        factory.initialize_prod_lines(prod_time)
+
         while prod_time < sim_time:
 
             factory.update_factory(prod_time)

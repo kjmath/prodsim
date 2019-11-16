@@ -215,15 +215,18 @@ class Factory:
         '''
 
         # identify critical time process/part
-        crit_obj = self.find_crit_time_object()
+        crit_obj = self.find_crit_time_object(prod_time)
         cycle = False
 
         # if process, end and restart process
         if isinstance(crit_obj, Process):
             cycle = crit_obj.is_buffer_full()
             crit_part = crit_obj.part_in_process
-            crit_prod_line = self.part_type_dict[crit_part]
-            crit_prod_line.end_process(crit_obj)
+
+            if crit_part is not None:
+                crit_prod_line = self.part_type_dict[crit_part]
+                crit_prod_line.end_process(crit_obj)
+
             crit_obj.start_process(prod_time)
 
         # if part type, add part to first process buffer
@@ -243,6 +246,15 @@ class Factory:
                     prod_line = self.part_type_dict[part]
                     prod_line.end_process(process)
                     update_count += process.start_process()
+
+        self.update_crit_time_dict()
+
+    def initialize_prod_lines(self):
+        '''Initialize factory production lines with a part after factory creation. 
+            Must run this before running update_factory() for first time.'''
+
+        for line in self.prod_lines:
+            line.add_arriving_part(0)
 
         self.update_crit_time_dict()
 
@@ -271,6 +283,9 @@ class Factory:
             self.crit_time_dict[process] = process.next_crit_time
 
     def get_next_crit_time(self):
-        '''Retrieve the next critical time from the crit_time_dict.'''
+        '''Retrieve the next critical time from the crit_time_dict, 
+            assuming critical time is > 0.
+        '''
 
-        return min(self.crit_time_dict.values())
+        times = [time for time in self.crit_time_dict.values() if time > 0]
+        return min(times)

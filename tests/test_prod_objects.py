@@ -306,10 +306,10 @@ class TestFactoryMethods(unittest.TestCase):
         np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
         self.factory.update_crit_time_dict()
-        self.assertTrue(self.factory.get_next_crit_time() == 0)
+        self.assertTrue(self.factory.get_next_crit_time() == pt1)
     
     def test_get_next_crit_time2(self):
-        '''Test Factory.get_next_crit_time() method, with two > 0 values in dict.'''
+        '''Test Factory.get_next_crit_time() method, with all values in dict.'''
         sample_prod_time = 5
         np.random.seed(0)
         pt1 = np.random.uniform(low=1, high=5) + sample_prod_time
@@ -327,16 +327,49 @@ class TestFactoryMethods(unittest.TestCase):
         self.process_instance4.update_next_crit_time(sample_prod_time)
         self.factory.update_crit_time_dict()
         self.assertTrue(self.factory.get_next_crit_time() == min([pt1, pt2, pt3, pt4, pt5, pt6]))
-    
+
+    def test_initialize_prod_lines1(self):
+        '''Test Factory.initialize_prod_lines() method for newly created factory instance.'''
+        np.random.seed(0)
+        pt1 = np.random.uniform(low=1, high=5)
+        pt2 = np.random.uniform(low=1, high=5)
+        np.random.seed(0)
+        test_crit_time_dict = {self.part_type_inst1: pt1, self.part_type_inst2: pt2,
+                               self.process_instance1: 0, self.process_instance2: 0,
+                               self.process_instance3: 0, self.process_instance4: 0}
+        self.factory.initialize_prod_lines()
+        self.assertTrue(self.factory.crit_time_dict == test_crit_time_dict)
+
     def test_update_factory1(self):
-        pass
-        '''
+        '''Test Factory.update_factory() with > 0 dict elements, empty buffers.'''
         sample_prod_time = 5
-        self.prod_line1.add_arriving_part
+        np.random.seed(0)
+        pt1 = np.random.uniform(low=1, high=5) + sample_prod_time
+        pt2 = np.random.uniform(low=1, high=5) + sample_prod_time
+        pt3 = np.random.uniform(low=2, high=4) + sample_prod_time
+        pt4 = np.random.uniform(low=2, high=4) + sample_prod_time
+        pt5 = np.random.uniform(low=2, high=4) + sample_prod_time
+        pt6 = np.random.uniform(low=2, high=4) + sample_prod_time
+        np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
+        self.part_type_inst2.update_next_crit_time(sample_prod_time)
+        self.process_instance1.update_next_crit_time(sample_prod_time)
+        self.process_instance2.update_next_crit_time(sample_prod_time)
+        self.process_instance3.update_next_crit_time(sample_prod_time)
+        self.process_instance4.update_next_crit_time(sample_prod_time)
         self.factory.update_crit_time_dict()
-        self.assertTrue(self.factory.get_next_crit_time() == pt1)'''
-    
+        check1 = self.factory.crit_time_dict
+        next_prod_time = self.factory.get_next_crit_time()
+        self.factory.update_factory(next_prod_time)
+        check2 = self.factory.crit_time_dict
+        self.assertTrue(check1 == check2)
+       
+    def test_update_factory2(self):
+        '''Test Factory.update_factory() with newly initialized factory instance.'''
+        pass
+        sample_prod_time = 0
+        self.factory.update_factory(sample_prod_time)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
