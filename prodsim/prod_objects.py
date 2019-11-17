@@ -1,5 +1,6 @@
 """Collection of classes for prod-sim"""
 import numpy as np
+from prodsim.helpers import weibull
 
 class Process:
 
@@ -51,7 +52,11 @@ class Process:
             scalar: process time [units: simulator time units].
         '''
 
-        prob_dist_func = getattr(np.random, self.prob_dist)
+        if self.prob_dist == 'weibull': 
+            prob_dist_func = weibull
+        else:
+            prob_dist_func = getattr(np.random, self.prob_dist)
+
         process_time = prob_dist_func(**self.params)
         return process_time
 
@@ -144,6 +149,7 @@ class ProductionLine:
         self.part_type = part_type
         self.process_stations = process_stations
         self.throughput = 0
+        self.num_arrivals = 0
 
     def end_process(self, process):
         '''End a process and updates next process buffer, assuming process currently has 
@@ -151,19 +157,24 @@ class ProductionLine:
 
         Arguments:
             process (Process class object): process to be ended. 
-        '''
-        if process.part_in_process == self.part_type:
-        
-            proc_index = self.process_stations.index(process)
 
-            if proc_index == len(self.process_stations) - 1:
-                process.part_in_process = None
-                self.throughput += 1
-            elif not self.process_stations[proc_index + 1].is_buffer_full():
-                process.part_in_process = None
-                self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
-            else:
-                process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
+        Returns:
+            boolean: True if process ended, False if not
+        '''
+        
+        proc_index = self.process_stations.index(process)
+
+        if proc_index == len(self.process_stations) - 1:
+            process.part_in_process = None
+            self.throughput += 1
+            return True
+        elif not self.process_stations[proc_index + 1].is_buffer_full():
+            process.part_in_process = None
+            self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
+            return True
+        else:
+            process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
+            return False
 
     def add_arriving_part(self, prod_time):
         '''Add an arriving part to the buffer of the first process in the production line, 
@@ -177,6 +188,7 @@ class ProductionLine:
 
         if not first_process.is_buffer_full():
             first_process.add_to_buffer(self.part_type)
+            self.num_arrivals += 1
 
         self.part_type.update_next_crit_time(prod_time)
 
@@ -237,7 +249,7 @@ class Factory:
                 if part is not None:
                     prod_line = self.part_type_dict[part]
                     if process.next_crit_time <= prod_time:
-                        prod_line.end_process(process)
+                        update_count += prod_line.end_process(process)
 
                 update_count += process.start_process(prod_time)
 
