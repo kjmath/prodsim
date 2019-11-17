@@ -11,15 +11,18 @@ def main(args):
 
     while prod_time < sim_time:
 
-        print('prod_time: ' + str(prod_time))
-
         factory.update_factory(prod_time)
         prod_time = factory.get_next_crit_time()
+
+    ######## RESULTS ########
         
+    print('Final production time: ' + str(prod_time))
+    print('Number of iterations: ' + str(factory.iterations))    
+
     for line in factory.prod_lines:
         print(line.part_type.name + ' throughput: ' + str(line.throughput))
 
-
+   
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Simulate factory.')

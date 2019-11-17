@@ -209,6 +209,8 @@ class Factory:
         self.crit_time_dict = crit_time_dict
         self.part_type_dict = part_type_dict
 
+        self.iterations = 0
+
     def update_factory(self, prod_time):
         '''Update the factory for current critical time: update process or incoming 
             part buffer for critical time.
@@ -229,15 +231,11 @@ class Factory:
 
         update_count = 1
         while update_count > 0:
-
             update_count = 0
-
             for process in self.all_processes:
                 part = process.part_in_process
-
                 if part is not None:
                     prod_line = self.part_type_dict[part]
-
                     if process.next_crit_time <= prod_time:
                         prod_line.end_process(process)
 
@@ -283,6 +281,7 @@ class Factory:
         '''Retrieve the next critical time from the crit_time_dict, 
             assuming critical time is > 0.
         '''
+        self.iterations += 1
 
         times = [time for time in self.crit_time_dict.values() if time > 0]
         return min(times)
