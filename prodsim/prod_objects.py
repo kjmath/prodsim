@@ -28,18 +28,18 @@ class Process:
         self.next_crit_time = 0 # initialize time of next completed process
 
     def start_process(self, prod_time):
-        '''start the process: update completion time, move first part in buffer
+        '''Start the process: update completion time, move first part in buffer
             to in process.'''
         if self.part_in_process is None:
             
             if self.parts_in_buffer:
-                print('buffer not full')
                 self.update_next_crit_time(prod_time)
                 self.part_in_process = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
                 return True
             else:
-                self.next_crit_time = 0
+                # set to 0 so simulator can move forward and try again on next iteration
+                self.next_crit_time = 0 
 
         return False
 
@@ -152,9 +152,7 @@ class ProductionLine:
         Arguments:
             process (Process class object): process to be ended. 
         '''
-        print('correct part3')
         if process.part_in_process == self.part_type:
-            print('correct part4')
         
             proc_index = self.process_stations.index(process)
 
@@ -165,8 +163,7 @@ class ProductionLine:
                 process.part_in_process = None
                 self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
             else:
-                print('skip1')
-                process.next_crit_time = 0
+                process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
 
     def add_arriving_part(self, prod_time):
         '''Add an arriving part to the buffer of the first process in the production line, 
@@ -179,7 +176,6 @@ class ProductionLine:
         first_process = self.process_stations[0]
 
         if not first_process.is_buffer_full():
-            print('buffer not full')
             first_process.add_to_buffer(self.part_type)
 
         self.part_type.update_next_crit_time(prod_time)
@@ -223,43 +219,31 @@ class Factory:
 
         # identify critical time process/part
         crit_obj = self.find_crit_time_object(prod_time)
-        cycle = False
-
-        # if process, end and restart process
-        if isinstance(crit_obj, Process):
-            cycle = crit_obj.is_buffer_full() # TODO also if next buffer is empty
-            crit_part = crit_obj.part_in_process
-            print('is process')
-            if crit_part is not None:
-                print(crit_part.name)
-                crit_prod_line = self.part_type_dict[crit_part]
-                crit_prod_line.end_process(crit_obj)
-
-            crit_obj.start_process(prod_time)
 
         # if part type, add part to first process buffer
-        elif isinstance(crit_obj, PartType):
-            print('is part')
+        if isinstance(crit_obj, PartType):
 
             crit_prod_line = self.part_type_dict[crit_obj]
             crit_prod_line.add_arriving_part(prod_time)
-            print(crit_prod_line.process_stations[0].part_in_process)
-            crit_prod_line.process_stations[0].start_process(prod_time)
+            crit_prod_line.process_stations[0].start_process(prod_time)           
 
-        # if critical time process had a full buffer, it may have been 
-        # preventing other processes from progressing; end/restart all processes
-        # if this is the case.
-        if cycle:
-            update_count = 1
-            while update_count > 0:
-                update_count = 0
-                for process in self.all_processes:
-                    part = process.part_in_process
-                    if part is not None:
-                        prod_line = self.part_type_dict[part]
+        update_count = 1
+        while update_count > 0:
+
+            update_count = 0
+
+            for process in self.all_processes:
+                part = process.part_in_process
+
+                if part is not None:
+                    prod_line = self.part_type_dict[part]
+
+                    if process.next_crit_time <= prod_time:
                         prod_line.end_process(process)
-                    update_count += process.start_process(prod_time)
 
+                update_count += process.start_process(prod_time)
+
+        # if part type, add part to first process buffer
         self.update_crit_time_dict()
 
     def initialize_prod_lines(self):

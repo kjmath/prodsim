@@ -12,15 +12,12 @@ def main(args):
     while prod_time < sim_time:
 
         print('prod_time: ' + str(prod_time))
-        print(factory.crit_time_dict)
 
         factory.update_factory(prod_time)
         prod_time = factory.get_next_crit_time()
         
     for line in factory.prod_lines:
         print(line.part_type.name + ' throughput: ' + str(line.throughput))
-
-
 
 
 if __name__ == '__main__':
