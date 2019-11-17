@@ -32,4 +32,4 @@ production_lines:
     process_list: ['test1', 'test2', 'test4']
 
 # Input desired length of simulation.
-simulation_time: 100 # simulation duration in same time units as distributions.
+simulation_time: 200 # simulation duration in same time units as distributions.

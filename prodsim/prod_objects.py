@@ -30,13 +30,16 @@ class Process:
     def start_process(self, prod_time):
         '''start the process: update completion time, move first part in buffer
             to in process.'''
-
         if self.part_in_process is None:
+            
             if self.parts_in_buffer:
+                print('buffer not full')
                 self.update_next_crit_time(prod_time)
                 self.part_in_process = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
                 return True
+            else:
+                self.next_crit_time = 0
 
         return False
 
@@ -140,6 +143,7 @@ class ProductionLine:
 
         self.part_type = part_type
         self.process_stations = process_stations
+        self.throughput = 0
 
     def end_process(self, process):
         '''End a process and updates next process buffer, assuming process currently has 
@@ -148,16 +152,21 @@ class ProductionLine:
         Arguments:
             process (Process class object): process to be ended. 
         '''
-
+        print('correct part3')
         if process.part_in_process == self.part_type:
+            print('correct part4')
         
             proc_index = self.process_stations.index(process)
 
             if proc_index == len(self.process_stations) - 1:
                 process.part_in_process = None
+                self.throughput += 1
             elif not self.process_stations[proc_index + 1].is_buffer_full():
                 process.part_in_process = None
                 self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
+            else:
+                print('skip1')
+                process.next_crit_time = 0
 
     def add_arriving_part(self, prod_time):
         '''Add an arriving part to the buffer of the first process in the production line, 
@@ -170,6 +179,7 @@ class ProductionLine:
         first_process = self.process_stations[0]
 
         if not first_process.is_buffer_full():
+            print('buffer not full')
             first_process.add_to_buffer(self.part_type)
 
         self.part_type.update_next_crit_time(prod_time)
@@ -189,7 +199,6 @@ class Factory:
 
         all_processes = [] # list for storing all factory processes
         crit_time_dict = {} # dictionary for storing simulator critical times
-        buffer_full_dict = {} # dictionary for storing processes with full buffers
         part_type_dict = {} # dictionary for mapping part types to production lines
 
         # intialize above lists/dictionaries
@@ -200,10 +209,8 @@ class Factory:
                 if process not in all_processes:
                     all_processes.append(process)
                     crit_time_dict[process] = 0
-                    buffer_full_dict[process] = False
-        self.all_processes = all_processes # TODO not sure if needed
+        self.all_processes = all_processes 
         self.crit_time_dict = crit_time_dict
-        self.buffer_full_dict = buffer_full_dict # TODO not sure if needed
         self.part_type_dict = part_type_dict
 
     def update_factory(self, prod_time):
@@ -220,10 +227,11 @@ class Factory:
 
         # if process, end and restart process
         if isinstance(crit_obj, Process):
-            cycle = crit_obj.is_buffer_full()
+            cycle = crit_obj.is_buffer_full() # TODO also if next buffer is empty
             crit_part = crit_obj.part_in_process
-
+            print('is process')
             if crit_part is not None:
+                print(crit_part.name)
                 crit_prod_line = self.part_type_dict[crit_part]
                 crit_prod_line.end_process(crit_obj)
 
@@ -231,8 +239,11 @@ class Factory:
 
         # if part type, add part to first process buffer
         elif isinstance(crit_obj, PartType):
+            print('is part')
+
             crit_prod_line = self.part_type_dict[crit_obj]
             crit_prod_line.add_arriving_part(prod_time)
+            print(crit_prod_line.process_stations[0].part_in_process)
             crit_prod_line.process_stations[0].start_process(prod_time)
 
         # if critical time process had a full buffer, it may have been 
@@ -244,9 +255,10 @@ class Factory:
                 update_count = 0
                 for process in self.all_processes:
                     part = process.part_in_process
-                    prod_line = self.part_type_dict[part]
-                    prod_line.end_process(process)
-                    update_count += process.start_process()
+                    if part is not None:
+                        prod_line = self.part_type_dict[part]
+                        prod_line.end_process(process)
+                    update_count += process.start_process(prod_time)
 
         self.update_crit_time_dict()
 

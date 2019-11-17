@@ -258,13 +258,6 @@ class TestFactoryMethods(unittest.TestCase):
         self.assertTrue(self.factory.crit_time_dict ==
                         test_crit_time_dict)
 
-    def test_factory_init4(self):
-        '''Test Factory.__init__() buffer_full_dict attribute.'''
-        test_buffer_full_dict = {self.process_instance1: False, self.process_instance2: False,
-                                 self.process_instance3: False, self.process_instance4: False}
-        self.assertTrue(self.factory.buffer_full_dict ==
-                        test_buffer_full_dict)
-
     def test_factory_init5(self):
         '''Test Factory.__init__() part_type_dict attribute.'''
         test_part_type_dict = {self.part_type_inst2: self.prod_line2, 

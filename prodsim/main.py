@@ -1,30 +1,26 @@
 """Main processing script for prodsim"""
 import argparse
 import os
+from prodsim.yaml_loader import yaml_loader
 
 def main(args):
 
-    pass
+    factory, sim_time = yaml_loader(args.yaml_file)
+    factory.initialize_prod_lines()
+    prod_time = factory.get_next_crit_time()
 
-    """ make part types
-        make process stations
-        make production lines
-        make factory
-        establish total simulation time (sim_time)
-        deal with startup (run PartType.add_arriving_part() for each part)
-        maybe choose min next crit time for crit time > 0
+    while prod_time < sim_time:
 
-        factory, sim_time = yaml_loader(args[1])
+        print('prod_time: ' + str(prod_time))
+        print(factory.crit_time_dict)
 
-        prod_time = 0 # initialize factory time at 0
+        factory.update_factory(prod_time)
+        prod_time = factory.get_next_crit_time()
+        
+    for line in factory.prod_lines:
+        print(line.part_type.name + ' throughput: ' + str(line.throughput))
 
-        factory.initialize_prod_lines(prod_time)
 
-        while prod_time < sim_time:
-
-            factory.update_factory(prod_time)
-            prod_time = factory.get_next_crit_time()
-        """
 
 
 if __name__ == '__main__':
