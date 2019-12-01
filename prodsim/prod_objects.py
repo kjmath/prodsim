@@ -96,7 +96,7 @@ class Process:
 
 class PartType:
 
-    def __init__(self, name, arrival_prob_dist, arrival_params):
+    def __init__(self, name, arrival_prob_dist, arrival_params, process_stations):
         '''Create a part type object.
 
         Arguments:
@@ -107,11 +107,16 @@ class PartType:
             arrival_params (dict): dictionary of parameters for selected interarrival 
                 time distribution, in simulator time units; use parameter names given 
                 for numpy.random distributions as keys for dictionary.
+            process_stations (list of Process objects): ordered list of Process objects representing the
+                production line for the part. 
         '''
         self.name = name
         self.arrival_prob_dist = arrival_prob_dist
         self.arrival_params = arrival_params
+        self.process_stations = process_stations
         self.next_crit_time = 0
+        self.num_arrivals = 0
+        self.throughput = 0
 
     def get_next_crit_time(self):
         '''Get arrival time for next part from probability distribution.
@@ -133,24 +138,6 @@ class PartType:
 
         self.next_crit_time = self.get_next_crit_time() + prod_time
 
-
-class ProductionLine:
-
-    def __init__(self, part_type, process_stations):
-        '''Create a production line object.
-
-        Arguments:
-            part_type (PartType class object): part type instance corresponding to the part type
-                of the production line.
-            process_stations (list): ordered list of Process objects representing the
-                production line for the designated part type. 
-        '''
-
-        self.part_type = part_type
-        self.process_stations = process_stations
-        self.throughput = 0
-        self.num_arrivals = 0
-
     def end_process(self, process):
         '''End a process and updates next process buffer, assuming process currently has 
             an in-process part moving in the current production line.
@@ -162,22 +149,25 @@ class ProductionLine:
             boolean: True if process ended, False if not
         '''
         
-        proc_index = self.process_stations.index(process)
+        if process in self.process_stations and process.part_in_process == self:
+            proc_index = self.process_stations.index(process)
 
-        if proc_index == len(self.process_stations) - 1:
-            process.part_in_process = None
-            self.throughput += 1
-            return True
-        elif not self.process_stations[proc_index + 1].is_buffer_full():
-            process.part_in_process = None
-            self.process_stations[proc_index + 1].add_to_buffer(self.part_type)
-            return True
-        else:
-            process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
-            return False
+            # process is last process
+            if proc_index == len(self.process_stations) - 1:
+                process.part_in_process = None
+                self.throughput += 1
+                return True
+            # process is not last process and next process has room in buffer
+            elif not self.process_stations[proc_index + 1].is_buffer_full():
+                process.part_in_process = None
+                self.process_stations[proc_index + 1].add_to_buffer(self)
+                return True
+
+        process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
+        return False
 
     def add_arriving_part(self, prod_time):
-        '''Add an arriving part to the buffer of the first process in the production line, 
+        '''Add an arriving part to the buffer of the first process for the part, 
             assuming the buffer is not full. Update next critical time.
         
         Arguments:
@@ -187,39 +177,36 @@ class ProductionLine:
         first_process = self.process_stations[0]
 
         if not first_process.is_buffer_full():
-            first_process.add_to_buffer(self.part_type)
+            first_process.add_to_buffer(self)
             self.num_arrivals += 1
 
-        self.part_type.update_next_crit_time(prod_time)
+        self.update_next_crit_time(prod_time)
 
 
 class Factory:
 
-    def __init__(self, prod_lines):
+    def __init__(self, part_types):
         '''Create a factory object.
 
         Arguments:
-            prod_lines (list of ProductionLine objects): list of production 
+            part_types (list of ProductionLine objects): list of production 
                 lines in factory.
         '''
 
-        self.prod_lines = prod_lines
+        self.part_types = part_types
 
         all_processes = [] # list for storing all factory processes
         crit_time_dict = {} # dictionary for storing simulator critical times
-        part_type_dict = {} # dictionary for mapping part types to production lines
 
         # intialize above lists/dictionaries
-        for line in prod_lines:
-            part_type_dict[line.part_type] = line
-            crit_time_dict[line.part_type] = 0
-            for process in line.process_stations:
+        for part in part_types:
+            crit_time_dict[part] = 0
+            for process in part.process_stations:
                 if process not in all_processes:
                     all_processes.append(process)
                     crit_time_dict[process] = 0
         self.all_processes = all_processes 
         self.crit_time_dict = crit_time_dict
-        self.part_type_dict = part_type_dict
 
         self.iterations = 0
 
@@ -236,32 +223,28 @@ class Factory:
 
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
-
-            crit_prod_line = self.part_type_dict[crit_obj]
-            crit_prod_line.add_arriving_part(prod_time)
-            crit_prod_line.process_stations[0].start_process(prod_time)           
+            crit_obj.add_arriving_part(prod_time)
+            crit_obj.process_stations[0].start_process(prod_time)           
 
         update_count = 1
         while update_count > 0:
             update_count = 0
             for process in self.all_processes:
                 part = process.part_in_process
-                if part is not None:
-                    prod_line = self.part_type_dict[part]
-                    if process.next_crit_time <= prod_time:
-                        update_count += prod_line.end_process(process)
+                if part is not None and process.next_crit_time <= prod_time:
+                        update_count += part.end_process(process)
 
                 update_count += process.start_process(prod_time)
 
         # if part type, add part to first process buffer
         self.update_crit_time_dict()
 
-    def initialize_prod_lines(self):
-        '''Initialize factory production lines with a part after factory creation. 
+    def initialize_production(self):
+        '''Initialize first processes with a part after factory creation. 
             Must run this before running update_factory() for first time.'''
 
-        for line in self.prod_lines:
-            line.add_arriving_part(0)
+        for part in self.part_types:
+            part.add_arriving_part(0)
 
         self.update_crit_time_dict()
 
