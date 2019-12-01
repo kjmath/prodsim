@@ -1,0 +1,43 @@
+# Autobody shop specifications.  
+# 2019-11-16
+
+# Input all processes that will be used for all part types/production lines. 
+# Choose distributions and parameters from numpy.random distributions.
+# If using Weibull distribution, can use second 'scale' parameter (unlike numpy.random).
+# See helpers.py for documentation of Weibull distribution sampling.
+processes:
+  - name: 'repair garage' # a unique string identifying the process
+    distribution: 'uniform' # must be distribution supported by numpy.random
+    parameters: {'low': 0.67, 'high': 0.67} # parameter dictionary keys must be exactly same as numpy.random
+    buffer_size: null # size of buffer BEFORE process, use null for infinite buffer
+  - name: 'LD body shop'
+    distribution: 'uniform'
+    parameters: {'low': 45, 'high': 45}
+    buffer_size: null 
+  - name: 'LD prep shop'
+    distribution: 'uniform'
+    parameters: {'low': 9, 'high': 9}
+    buffer_size: null
+  - name: 'paint shop'
+    distribution: 'uniform'
+    parameters: {'low': 0.75, 'high': 0.75}
+    buffer_size: null
+  - name: 'reassembly'
+    distribution: 'uniform'
+    parameters: {'low': 2.19, 'high': 2.19}
+    buffer_size: null
+  - name: 'detail'
+    distribution: 'uniform'
+    parameters: {'low': 1.3, 'high': 1.3}
+    buffer_size: null
+
+# Input all production lines used for manufacturing parts.
+part_types:
+  - part_name: 'low damage'
+    part_arrival_distribution: 'exponential'
+    part_arrival_parameters: {'scale': 3.2}
+    process_list: ['repair garage', 'LD body shop', 'LD prep shop', 'paint shop', 'reassembly', 'detail']
+
+# Input desired length of simulation.
+simulation_time: 3000 # simulation duration in same time units as distributions.
+time_units: 'hours'

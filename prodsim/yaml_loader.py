@@ -22,10 +22,12 @@ def yaml_loader(input_file):
     with open(input_file) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
 
+        # access data file inputs
         processes_input = data['processes']
         part_types_input = data['part_types']
         sim_time = data['simulation_time']
 
+        # create list of all process objects
         process_objects = []
         for process in processes_input:
             process_name = process['name']
@@ -40,6 +42,7 @@ def yaml_loader(input_file):
         for process in process_objects:
             process_dict[process.name] = process
 
+        # create list of part type objects
         part_type_objects = []
         for part in part_types_input:
             part_type_name = part['part_name']
@@ -55,6 +58,7 @@ def yaml_loader(input_file):
                 part_type_name, part_arrival_dist, part_arrival_params, process_list)
             part_type_objects.append(part_type_inst)
 
+        # create factory object
         factory_object = Factory(part_type_objects)
 
         return factory_object, sim_time
