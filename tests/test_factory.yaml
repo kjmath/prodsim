@@ -20,16 +20,16 @@ processes:
     parameters: {'low': 2, 'high': 4}
     buffer_size: 1 # size of buffer BEFORE process
 
-# Input all production lines used for manufacturing parts.
-production_lines:
-  - line_part_type: 'test_part1' # string describing part made on production line
+# Input all part types produced in factory.
+part_types:
+  - part_name: 'test_part1' # string describing part made on production line
     part_arrival_distribution: 'uniform'
     part_arrival_parameters: {'low': 1, 'high': 5}
     process_list: ['test1', 'test2', 'test3'] # list of ordered processes for production line, processes much match exactly to processes listed in processes above
-  - line_part_type: 'test_part2'
+  - part_name: 'test_part2'
     part_arrival_distribution: 'uniform'
     part_arrival_parameters: {'low': 1, 'high': 5}
     process_list: ['test1', 'test2', 'test4']
 
 # Input desired length of simulation.
-simulation_time: 200 # simulation duration in same time units as distributions.
+simulation_time: 30 # simulation duration in same time units as distributions.

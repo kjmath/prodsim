@@ -2,7 +2,7 @@
 import yaml
 import argparse
 import os
-from prodsim.prod_objects import Process, Factory, PartType, ProductionLine
+from prodsim.prod_objects import Process, Factory, PartType
 
 
 def yaml_loader(input_file):
@@ -23,7 +23,7 @@ def yaml_loader(input_file):
         data = yaml.load(f, Loader=yaml.FullLoader)
 
         processes_input = data['processes']
-        production_lines_input = data['production_lines']
+        part_types_input = data['part_types']
         sim_time = data['simulation_time']
 
         process_objects = []
@@ -40,24 +40,22 @@ def yaml_loader(input_file):
         for process in process_objects:
             process_dict[process.name] = process
 
-        prod_line_objects = []
-        for line in production_lines_input:
-            part_type_name = line['line_part_type']
-            part_arrival_dist = line['part_arrival_distribution']
-            part_arrival_params = line['part_arrival_parameters']
-            process_name_list = line['process_list']
+        part_type_objects = []
+        for part in part_types_input:
+            part_type_name = part['part_name']
+            part_arrival_dist = part['part_arrival_distribution']
+            part_arrival_params = part['part_arrival_parameters']
+            process_name_list = part['process_list']
 
             process_list = []
             for name in process_name_list:
                 process_list.append(process_dict[name])
 
             part_type_inst = PartType(
-                part_type_name, part_arrival_dist, part_arrival_params)
-            prod_line_inst = ProductionLine(
-                part_type_inst, process_list)
-            prod_line_objects.append(prod_line_inst)
+                part_type_name, part_arrival_dist, part_arrival_params, process_list)
+            part_type_objects.append(part_type_inst)
 
-        factory_object = Factory(prod_line_objects)
+        factory_object = Factory(part_type_objects)
 
         return factory_object, sim_time
 

@@ -12,7 +12,7 @@ class TestYamlLoader(unittest.TestCase):
         test_file_path = os.path.join(test_dir, 'test_factory.yaml')
         factory, sim_time = yaml_loader(test_file_path)
         self.assertTrue(sim_time == 30)
-        self.assertTrue(factory.prod_lines[0].process_stations[0].buffer_cap == 3)
+        self.assertTrue(factory.part_types[0].process_stations[0].buffer_cap == 3)
         self.assertTrue(len(factory.all_processes) == 4)
 
 if __name__ == '__main__':
