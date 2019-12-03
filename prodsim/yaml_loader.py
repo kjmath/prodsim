@@ -34,8 +34,9 @@ def yaml_loader(input_file):
             process_dist = process['distribution']
             process_params = process['parameters']
             process_buffer = process['buffer_size']
+            process_max_parts = process['max_parts_in_process']
             process_instance = Process(
-                process_name, process_dist, process_params, process_buffer)
+                process_name, process_dist, process_params, process_buffer, process_max_parts)
             process_objects.append(process_instance)
 
         process_dict = {} # map process name to object

@@ -9,26 +9,32 @@ processes:
   - name: 'repair garage' # a unique string identifying the process
     distribution: 'uniform' # must be distribution supported by numpy.random
     parameters: {'low': 0.67, 'high': 0.67} # parameter dictionary keys must be exactly same as numpy.random
+    max_parts_in_process: 1 # maximum number of parts that can be serviced simultaneously
     buffer_size: null # size of buffer BEFORE process, use null for infinite buffer
   - name: 'LD body shop'
     distribution: 'uniform'
     parameters: {'low': 45, 'high': 45}
+    max_parts_in_process: 1
     buffer_size: null 
   - name: 'LD prep shop'
     distribution: 'uniform'
     parameters: {'low': 9, 'high': 9}
+    max_parts_in_process: 1
     buffer_size: null
   - name: 'paint shop'
     distribution: 'uniform'
     parameters: {'low': 0.75, 'high': 0.75}
+    max_parts_in_process: 1
     buffer_size: null
   - name: 'reassembly'
     distribution: 'uniform'
     parameters: {'low': 2.19, 'high': 2.19}
+    max_parts_in_process: 1
     buffer_size: null
   - name: 'detail'
     distribution: 'uniform'
     parameters: {'low': 1.3, 'high': 1.3}
+    max_parts_in_process: 1
     buffer_size: null
 
 # Input all production lines used for manufacturing parts.
