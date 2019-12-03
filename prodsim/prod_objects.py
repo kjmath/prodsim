@@ -4,7 +4,7 @@ from prodsim.helpers import weibull
 
 class Process:
 
-    def __init__(self, name, prob_dist, params, buffer_cap):
+    def __init__(self, name, prob_dist, params, buffer_cap, max_parts):
         '''Create a production process object. Assumes no more than one part can be 
             currently in the process.
 
@@ -18,29 +18,33 @@ class Process:
                 for numpy.random distributions as keys for dictionary.
             buffer_cap(scalar or None): maximum buffer capacity BEFORE the process station, 
                 use None for infinite buffer.
+            max_parts (scalar or None): maximum number of parts that can be processed 
+                simulaneously.
 
         '''
         self.name = name
         self.prob_dist = prob_dist 
         self.params = params 
         self.buffer_cap = buffer_cap 
-        self.part_in_process = None # instance of PartType in process, or None
+        self.max_parts = max_parts
+        self.parts_in_process = max_parts * [None] # list containing instances of PartType in process, or None
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
-        self.next_crit_time = 0 # initialize time of next completed process
+        self.next_crit_time = max_parts * [0] # initialize times of next completed processes
 
     def start_process(self, prod_time):
         '''Start the process: update completion time, move first part in buffer
             to in process.'''
-        if self.part_in_process is None:
-            
+        if None in self.parts_in_process:
+            part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
+
             if self.parts_in_buffer:
-                self.update_next_crit_time(prod_time)
-                self.part_in_process = self.parts_in_buffer[0]
+                self.update_next_crit_time(prod_time, part_index)
+                self.parts_in_process[part_index] = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
                 return True
             else:
                 # set to 0 so simulator can move forward and try again on next iteration
-                self.next_crit_time = 0 
+                self.next_crit_time[part_index] = 0 
 
         return False
 
@@ -60,14 +64,15 @@ class Process:
         process_time = prob_dist_func(**self.params)
         return process_time
 
-    def update_next_crit_time(self, prod_time):
+    def update_next_crit_time(self, prod_time, part_index):
         ''' Update the next_crit_time attribute.
 
         Arguments:
             prod_time (scalar): current production/factory time of the simulation.
+            part_index (scalar): index in parts_in_process list of relevant part
         '''
 
-        self.next_crit_time = self.get_next_crit_time() + prod_time
+        self.next_crit_time[part_index] = self.get_next_crit_time() + prod_time
 
     def is_buffer_full(self):
         '''Check if buffer BEFORE process is full.
@@ -114,7 +119,7 @@ class PartType:
         self.arrival_prob_dist = arrival_prob_dist
         self.arrival_params = arrival_params
         self.process_stations = process_stations
-        self.next_crit_time = 0
+        self.next_crit_time = [0]
         self.num_arrivals = 0
         self.throughput = 0
 
@@ -136,34 +141,35 @@ class PartType:
             prod_time (scalar): current production/factory time of the simulation.
         '''
 
-        self.next_crit_time = self.get_next_crit_time() + prod_time
+        self.next_crit_time = [self.get_next_crit_time() + prod_time]
 
-    def end_process(self, process):
+    def end_process(self, process, part_index):
         '''End a process and updates next process buffer, assuming process currently has 
             an in-process part moving in the current production line.
 
         Arguments:
             process (Process class object): process to be ended. 
+            part_index (scalar): index of part in parts_in_process list to be ended.
 
         Returns:
             boolean: True if process ended, False if not
         '''
         
-        if process in self.process_stations and process.part_in_process == self:
+        if process in self.process_stations and process.parts_in_process[part_index] == self:
             proc_index = self.process_stations.index(process)
 
             # process is last process
             if proc_index == len(self.process_stations) - 1:
-                process.part_in_process = None
+                process.parts_in_process[part_index] = None
                 self.throughput += 1
                 return True
             # process is not last process and next process has room in buffer
             elif not self.process_stations[proc_index + 1].is_buffer_full():
-                process.part_in_process = None
+                process.parts_in_process[part_index] = None
                 self.process_stations[proc_index + 1].add_to_buffer(self)
                 return True
 
-        process.next_crit_time = 0 # set to 0 so simulator can try ending on next critical time
+        process.next_crit_time[part_index] = 0 # set to 0 so simulator can try ending on next critical time
         return False
 
     def add_arriving_part(self, prod_time):
@@ -200,11 +206,11 @@ class Factory:
 
         # intialize above lists/dictionaries
         for part in part_types:
-            crit_time_dict[part] = 0
+            crit_time_dict[part] = [0]
             for process in part.process_stations:
                 if process not in all_processes:
                     all_processes.append(process)
-                    crit_time_dict[process] = 0
+                    crit_time_dict[process] = process.max_parts * [0]
         self.all_processes = all_processes 
         self.crit_time_dict = crit_time_dict
 
@@ -219,7 +225,7 @@ class Factory:
         '''
 
         # identify critical time process/part
-        crit_obj = self.find_crit_time_object(prod_time)
+        crit_obj, crit_index = self.find_crit_time_object(prod_time)
 
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
@@ -230,13 +236,12 @@ class Factory:
         while update_count > 0:
             update_count = 0
             for process in self.all_processes:
-                part = process.part_in_process
-                if part is not None and process.next_crit_time <= prod_time:
-                        update_count += part.end_process(process)
+                for part_index, part in enumerate(process.parts_in_process):
+                    if part is not None and process.next_crit_time[part_index] <= prod_time:
+                            update_count += part.end_process(process, part_index)
 
-                update_count += process.start_process(prod_time)
+                    update_count += process.start_process(prod_time)
 
-        # if part type, add part to first process buffer
         self.update_crit_time_dict()
 
     def initialize_production(self):
@@ -255,12 +260,14 @@ class Factory:
             prod_time (scalar): current production/factory time of the simulation.
 
         Returns:
-            Process or PartType object or None: returns critical time process or part, 
+            Process or PartType: returns critical time process or part.
+            Part Index: returns part index of critical time proces,
                 or None if not found.'''
 
         for process in self.crit_time_dict:
-            if self.crit_time_dict[process] == prod_time:
-                return process
+            for part_index, time in enumerate(self.crit_time_dict[process]):
+                if time == prod_time:
+                    return process, part_index
 
         return None
             
@@ -278,5 +285,10 @@ class Factory:
         '''
         self.iterations += 1
 
-        times = [time for time in self.crit_time_dict.values() if time > 0]
+        times = []
+        for time_list in self.crit_time_dict.values():
+            for time in time_list:
+                if time > 0:
+                    times.append(time)
+
         return min(times)

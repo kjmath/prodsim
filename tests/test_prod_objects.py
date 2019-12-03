@@ -2,15 +2,17 @@
 
 import unittest
 import numpy as np
+import copy
 
 from prodsim.prod_objects import Process, Factory, PartType
+
 
 class TestProcessMethods(unittest.TestCase):
     '''Test cases for Process class.'''
 
     def setUp(self):
         self.process_instance = Process(
-            'test', 'uniform', {'low': 2, 'high': 4}, 3)
+            'test', 'uniform', {'low': 2, 'high': 4}, 3, 1)
         self.part_type_inst1 = PartType(
             'test_part1', 'uniform', {'low': 1, 'high': 5}, [self.process_instance])
         self.part_type_inst2 = PartType(
@@ -28,19 +30,25 @@ class TestProcessMethods(unittest.TestCase):
             process and empty buffer.'''
         sample_prod_time = 5
         self.process_instance.start_process(sample_prod_time)
-        self.assertIsNone(self.process_instance.part_in_process)
-        self.assertTrue(self.process_instance.next_crit_time == 0)
+        self.assertTrue(self.process_instance.parts_in_process == self.process_instance.max_parts * [None])
+        self.assertTrue(self.process_instance.next_crit_time == self.process_instance.max_parts * [0])
         self.assertTrue(not self.process_instance.parts_in_buffer)
 
     def test_start_process2(self):
         '''Test Process.start_process() method, with a part in 
             process and empty buffer.'''
         sample_prod_time = 5
-        self.process_instance.part_in_process = self.part_type_inst1
+
+        self.process_instance.parts_in_process[0] = self.part_type_inst1
         self.process_instance.start_process(sample_prod_time)
-        self.assertTrue(self.process_instance.part_in_process == 
-                        self.part_type_inst1)
-        self.assertTrue(self.process_instance.next_crit_time == 0)
+
+        test_parts = self.process_instance.max_parts * [None]
+        test_parts[0] = self.part_type_inst1
+
+        self.assertTrue(self.process_instance.parts_in_process == 
+                        test_parts)
+        self.assertTrue(self.process_instance.next_crit_time == 
+                        self.process_instance.max_parts * [0])
         self.assertTrue(not self.process_instance.parts_in_buffer)
 
     def test_start_process3(self):
@@ -53,10 +61,15 @@ class TestProcessMethods(unittest.TestCase):
         self.process_instance.parts_in_buffer = \
             [self.part_type_inst1, self.part_type_inst2, self.part_type_inst3]
         self.process_instance.start_process(sample_prod_time)
-        self.assertTrue(self.process_instance.part_in_process == 
-                        self.part_type_inst1)
-        self.assertTrue(self.process_instance.next_crit_time 
-                        == sample_prod_time + pt)
+
+        test_parts = self.process_instance.max_parts * [None]
+        test_parts[0] = self.part_type_inst1
+        self.assertTrue(self.process_instance.parts_in_process == test_parts)
+
+        test_crit_time = self.process_instance.max_parts * [0]
+        test_crit_time[0] = sample_prod_time + pt
+        self.assertTrue(self.process_instance.next_crit_time == test_crit_time)
+
         self.assertTrue(self.process_instance.parts_in_buffer ==
                         [self.part_type_inst2, self.part_type_inst3])
 
@@ -70,10 +83,12 @@ class TestProcessMethods(unittest.TestCase):
         sample_prod_time = 5
         np.random.seed(0)
         pt = np.random.uniform(low=2, high=4)
+        test_update_time = self.process_instance.max_parts * [0]
+        test_update_time[0] = sample_prod_time + pt
         np.random.seed(0)
-        self.process_instance.update_next_crit_time(sample_prod_time)
+        self.process_instance.update_next_crit_time(sample_prod_time, 0)
         self.assertTrue(self.process_instance.next_crit_time 
-                        == sample_prod_time + pt)
+                        == test_update_time)
 
     def test_is_buffer_full(self):
         '''Test Process.is_buffer_full() method.'''
@@ -102,13 +117,13 @@ class TestPartTypeMethods(unittest.TestCase):
 
     def setUp(self):
         self.process_instance1 = Process(
-            'test1', 'uniform', {'low': 2, 'high': 4}, 1)
+            'test1', 'uniform', {'low': 2, 'high': 4}, 1, 1)
         self.process_instance2 = Process(
-            'test2', 'uniform', {'low': 2, 'high': 4}, 3)
+            'test2', 'uniform', {'low': 2, 'high': 4}, 3, 1)
         self.process_instance3 = Process(
-            'test3', 'uniform', {'low': 2, 'high': 4}, 1)
+            'test3', 'uniform', {'low': 2, 'high': 4}, 1, 1)
         self.process_list = [self.process_instance1, self.process_instance2, 
-                        self.process_instance3]
+                             self.process_instance3]
         self.part_type_inst1 = PartType(
             'test_part1', 'uniform', {'low': 1, 'high': 5}, self.process_list)
 
@@ -132,44 +147,51 @@ class TestPartTypeMethods(unittest.TestCase):
         np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
         self.assertTrue(self.part_type_inst1.next_crit_time 
-                        == sample_prod_time + pt)
+                        == [sample_prod_time + pt])
 
     def test_end_process1(self):
         '''Test PartType.end_process() method with correct part 
             in processs2 and empty buffer for process3.'''
-        self.process_instance2.part_in_process = self.part_type_inst1
-        self.part_type_inst1.end_process(self.process_instance2)
-        self.assertIsNone(self.process_instance2.part_in_process)
+        self.process_instance2.parts_in_process[0] = self.part_type_inst1
+        self.part_type_inst1.end_process(self.process_instance2, 0)
+        self.assertTrue(self.process_instance2.parts_in_process ==
+                        self.process_instance2.max_parts * [None])
         self.assertTrue(self.process_instance3.parts_in_buffer == 
                         [self.part_type_inst1])
 
     def test_end_process2(self):
         '''Test PartType.end_process() method with correct part
             in process2 and full buffer for process3.'''
-        self.process_instance2.part_in_process = self.part_type_inst1
+        self.process_instance2.parts_in_process[0] = self.part_type_inst1
         self.process_instance3.add_to_buffer(self.part_type_inst1)
-        self.part_type_inst1.end_process(self.process_instance2)
-        self.assertTrue(self.process_instance2.part_in_process == 
-                        self.part_type_inst1)
+        self.part_type_inst1.end_process(self.process_instance2, 0)
+
+        test_parts = self.process_instance2.max_parts * [None]
+        test_parts[0] = self.part_type_inst1
+        self.assertTrue(self.process_instance2.parts_in_process == 
+                        test_parts)
         self.assertTrue(self.process_instance3.parts_in_buffer == 
                         [self.part_type_inst1])
 
     def test_end_process3(self):
         '''Test PartType.end_process() method with correct part
             in process3, where process3 is the final process.'''
-        self.process_instance3.part_in_process = self.part_type_inst1
-        self.part_type_inst1.end_process(self.process_instance3)
-        self.assertIsNone(self.process_instance3.part_in_process)
+        self.process_instance3.parts_in_process[0] = self.part_type_inst1
+        self.part_type_inst1.end_process(self.process_instance3, 0)
+        self.assertTrue(self.process_instance3.parts_in_process ==
+                        self.process_instance3.max_parts * [None])
 
     def test_end_process4(self):
         '''Test PartType.end_process() method with incorrect part
             in process2, and empty buffer for process3.'''
         part_type_inst2 = PartType(
             'test_part1', 'uniform', {'low': 1, 'high': 5}, self.process_list)
-        self.process_instance2.part_in_process = part_type_inst2
-        self.part_type_inst1.end_process(self.process_instance2)
-        self.assertTrue(self.process_instance2.part_in_process == 
-                        part_type_inst2)
+        self.process_instance2.parts_in_process[0] = part_type_inst2
+        self.part_type_inst1.end_process(self.process_instance2, 0)
+
+        test_parts = self.process_instance2.max_parts * [None]
+        test_parts[0] = part_type_inst2
+        self.assertTrue(self.process_instance2.parts_in_process == test_parts)
         self.assertTrue(not self.process_instance3.parts_in_buffer)
 
     def test_add_arriving_part1(self):
@@ -180,10 +202,15 @@ class TestPartTypeMethods(unittest.TestCase):
         pt = np.random.uniform(low=1, high=5)
         np.random.seed(0)    
         self.part_type_inst1.add_arriving_part(sample_prod_time)
-        self.assertTrue(self.part_type_inst1.next_crit_time 
-                        == sample_prod_time + pt)
+
+        test_crit_time = self.part_type_inst1.process_stations[0].max_parts * [0]
+        test_crit_time[0] = sample_prod_time + pt
+        self.assertTrue(self.part_type_inst1.next_crit_time == test_crit_time)
+
+        test_parts = self.part_type_inst1.process_stations[0].max_parts * [None]
+        test_parts[0] = self.part_type_inst1
         self.assertTrue(self.part_type_inst1.process_stations[0].parts_in_buffer ==
-                        [self.part_type_inst1])
+                        test_parts)
 
     def test_add_arriving_part2(self):
         '''Test PartType.add_arriving_part() method with full first
@@ -197,7 +224,7 @@ class TestPartTypeMethods(unittest.TestCase):
         self.process_instance1.add_to_buffer(part_type_inst2)
         self.part_type_inst1.add_arriving_part(sample_prod_time)
         self.assertTrue(self.part_type_inst1.next_crit_time 
-                        == sample_prod_time + pt)
+                        == [sample_prod_time + pt])
         self.assertTrue(self.part_type_inst1.process_stations[0].parts_in_buffer ==
                         [part_type_inst2])
 
@@ -207,13 +234,13 @@ class TestFactoryMethods(unittest.TestCase):
 
     def setUp(self):
         self.process_instance1 = Process(
-            'test1', 'uniform', {'low': 2, 'high': 4}, 3)
+            'test1', 'uniform', {'low': 2, 'high': 4}, 3, 1)
         self.process_instance2 = Process(
-            'test2', 'uniform', {'low': 2, 'high': 4}, 3)
+            'test2', 'uniform', {'low': 2, 'high': 4}, 3, 1)
         self.process_instance3 = Process(
-            'test3', 'uniform', {'low': 2, 'high': 4}, 1)
+            'test3', 'uniform', {'low': 2, 'high': 4}, 1, 1)
         self.process_instance4 = Process(
-            'test4', 'uniform', {'low': 2, 'high': 4}, 1)
+            'test4', 'uniform', {'low': 2, 'high': 4}, 1, 1)
         self.process_list1 = [self.process_instance1, self.process_instance2, 
                               self.process_instance3]
         self.process_list2 = [self.process_instance1, self.process_instance2, 
@@ -238,18 +265,20 @@ class TestFactoryMethods(unittest.TestCase):
 
     def test_factory_init3(self):
         '''Test Factory.__init__() crit_time_dict attribute.'''
-        test_crit_time_dict = {self.part_type_inst1: 0, self.part_type_inst2: 0,
-                               self.process_instance1: 0, self.process_instance2: 0,
-                               self.process_instance3: 0, self.process_instance4: 0}
+        test_crit_time_dict = {self.part_type_inst1: [0], self.part_type_inst2: [0],
+                               self.process_instance1: self.process_instance1.max_parts * [0],
+                               self.process_instance2: self.process_instance2.max_parts * [0],
+                               self.process_instance3: self.process_instance3.max_parts * [0],
+                               self.process_instance4: self.process_instance4.max_parts * [0]}
         self.assertTrue(self.factory.crit_time_dict ==
                         test_crit_time_dict)
 
     def test_find_crit_time_object1(self):
         '''Test Factory.find_crit_time_object() for a critical time in dictionary.'''
-        self.factory.crit_time_dict[self.process_instance3] = 5
+        self.factory.crit_time_dict[self.process_instance3][0] = 5
         sample_prod_time = 5
         self.assertTrue(self.factory.find_crit_time_object(sample_prod_time) ==
-                        self.process_instance3)
+                        (self.process_instance3, 0))
 
     def test_find_crit_time_object2(self):
         '''Test Factory.find_crit_time_object() for no critical time in dictionary.'''
@@ -264,10 +293,10 @@ class TestFactoryMethods(unittest.TestCase):
         np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
         self.factory.update_crit_time_dict()
-        test_crit_time_dict = {self.part_type_inst1: sample_prod_time + pt, 
-                               self.part_type_inst2: 0, self.process_instance1: 0, 
-                               self.process_instance2: 0, self.process_instance3: 0,
-                               self.process_instance4: 0}
+        test_crit_time_dict = {self.part_type_inst1: [sample_prod_time + pt], 
+                               self.part_type_inst2: [0], self.process_instance1: [0], 
+                               self.process_instance2: [0], self.process_instance3: [0],
+                               self.process_instance4: [0]}
         self.assertTrue(self.factory.crit_time_dict ==
                         test_crit_time_dict)
 
@@ -294,10 +323,10 @@ class TestFactoryMethods(unittest.TestCase):
         np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
         self.part_type_inst2.update_next_crit_time(sample_prod_time)
-        self.process_instance1.update_next_crit_time(sample_prod_time)
-        self.process_instance2.update_next_crit_time(sample_prod_time)
-        self.process_instance3.update_next_crit_time(sample_prod_time)
-        self.process_instance4.update_next_crit_time(sample_prod_time)
+        self.process_instance1.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance2.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance3.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance4.update_next_crit_time(sample_prod_time, 0)
         self.factory.update_crit_time_dict()
         self.assertTrue(self.factory.get_next_crit_time() == min([pt1, pt2, pt3, pt4, pt5, pt6]))
 
@@ -307,9 +336,9 @@ class TestFactoryMethods(unittest.TestCase):
         pt1 = np.random.uniform(low=1, high=5)
         pt2 = np.random.uniform(low=1, high=5)
         np.random.seed(0)
-        test_crit_time_dict = {self.part_type_inst1: pt1, self.part_type_inst2: pt2,
-                               self.process_instance1: 0, self.process_instance2: 0,
-                               self.process_instance3: 0, self.process_instance4: 0}
+        test_crit_time_dict = {self.part_type_inst1: [pt1], self.part_type_inst2: [pt2],
+                               self.process_instance1: [0], self.process_instance2: [0],
+                               self.process_instance3: [0], self.process_instance4: [0]}
         self.factory.initialize_production()
         self.assertTrue(self.factory.crit_time_dict == test_crit_time_dict)
 
@@ -317,26 +346,20 @@ class TestFactoryMethods(unittest.TestCase):
         '''Test Factory.update_factory() with > 0 dict elements, empty buffers.'''
         sample_prod_time = 5
         np.random.seed(0)
-        pt1 = np.random.uniform(low=1, high=5) + sample_prod_time
-        pt2 = np.random.uniform(low=1, high=5) + sample_prod_time
-        pt3 = np.random.uniform(low=2, high=4) + sample_prod_time
-        pt4 = np.random.uniform(low=2, high=4) + sample_prod_time
-        pt5 = np.random.uniform(low=2, high=4) + sample_prod_time
-        pt6 = np.random.uniform(low=2, high=4) + sample_prod_time
-        np.random.seed(0)
         self.part_type_inst1.update_next_crit_time(sample_prod_time)
         self.part_type_inst2.update_next_crit_time(sample_prod_time)
-        self.process_instance1.update_next_crit_time(sample_prod_time)
-        self.process_instance2.update_next_crit_time(sample_prod_time)
-        self.process_instance3.update_next_crit_time(sample_prod_time)
-        self.process_instance4.update_next_crit_time(sample_prod_time)
+        self.process_instance1.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance2.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance3.update_next_crit_time(sample_prod_time, 0)
+        self.process_instance4.update_next_crit_time(sample_prod_time, 0)
         self.factory.update_crit_time_dict()
-        check1 = self.factory.crit_time_dict
+        check1 = copy.deepcopy(self.factory.crit_time_dict)
         next_prod_time = self.factory.get_next_crit_time()
         self.factory.update_factory(next_prod_time)
         check2 = self.factory.crit_time_dict
-        self.assertTrue(check1 == check2)
-       
+        self.assertFalse(check1 == check2)
+
+
     def test_update_factory2(self):
         '''Test Factory.update_factory() with newly initialized factory instance.'''
         np.random.seed(0)
@@ -351,15 +374,15 @@ class TestFactoryMethods(unittest.TestCase):
         proc_add = np.random.uniform(low=2, high=4) + first_prod_time
         if pt1 < pt2:
             pt1 += add
-            self.assertTrue(self.process_instance1.part_in_process == self.part_type_inst1)
-            self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst2, self.part_type_inst1 ])
+            self.assertTrue(self.process_instance1.parts_in_process[0] == self.part_type_inst1)
+            self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst2, self.part_type_inst1])
         else:
             pt2 += add
-            self.assertTrue(self.process_instance1.part_in_process == self.part_type_inst2)
+            self.assertTrue(self.process_instance1.parts_in_process[0] == self.part_type_inst2)
             self.assertTrue(self.process_instance1.parts_in_buffer == [self.part_type_inst2, self.part_type_inst2])
-        test_crit_time_dict = {self.part_type_inst1: pt1, self.part_type_inst2: pt2,
-                               self.process_instance1: proc_add, self.process_instance2: 0,
-                               self.process_instance3: 0, self.process_instance4: 0}
+        test_crit_time_dict = {self.part_type_inst1: [pt1], self.part_type_inst2: [pt2],
+                               self.process_instance1: [proc_add], self.process_instance2: [0],
+                               self.process_instance3: [0], self.process_instance4: [0]}
         self.assertTrue(self.factory.crit_time_dict == test_crit_time_dict)
 
 
