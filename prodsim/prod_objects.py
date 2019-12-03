@@ -44,6 +44,7 @@ class Process:
                 return True
             else:
                 # set to 0 so simulator can move forward and try again on next iteration
+                # print('no parts in buffer')
                 self.next_crit_time[part_index] = 0 
 
         return False
@@ -161,11 +162,13 @@ class PartType:
             # process is last process
             if proc_index == len(self.process_stations) - 1:
                 process.parts_in_process[part_index] = None
+                process.next_crit_time[part_index] = 0
                 self.throughput += 1
                 return True
             # process is not last process and next process has room in buffer
             elif not self.process_stations[proc_index + 1].is_buffer_full():
                 process.parts_in_process[part_index] = None
+                process.next_crit_time[part_index] = 0
                 self.process_stations[proc_index + 1].add_to_buffer(self)
                 return True
 
@@ -226,11 +229,17 @@ class Factory:
 
         # identify critical time process/part
         crit_obj, crit_index = self.find_crit_time_object(prod_time)
+        print(crit_obj.name)
+        print(prod_time)
+
 
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
             crit_obj.add_arriving_part(prod_time)
-            crit_obj.process_stations[0].start_process(prod_time)           
+            crit_obj.process_stations[0].start_process(prod_time)
+        else:
+            pass
+            # print(crit_obj.parts_in_process)       
 
         update_count = 1
         while update_count > 0:
@@ -238,11 +247,12 @@ class Factory:
             for process in self.all_processes:
                 for part_index, part in enumerate(process.parts_in_process):
                     if part is not None and process.next_crit_time[part_index] <= prod_time:
-                            update_count += part.end_process(process, part_index)
+                        update_count += part.end_process(process, part_index)
 
                     update_count += process.start_process(prod_time)
 
         self.update_crit_time_dict()
+        # print(self.crit_time_dict)
 
     def initialize_production(self):
         '''Initialize first processes with a part after factory creation. 
