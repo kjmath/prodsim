@@ -350,7 +350,10 @@ class Factory:
                 for part_index, part in enumerate(process.parts_in_process):
                     if part is not None and process.next_crit_time[part_index] <= prod_time:
                         update_count += part.end_process(process, part_index)
-
+                        """
+                        for worker that is assigned to process
+                            worker task = None
+                        """
 
                     update_count += process.start_process(prod_time, self.get_num_workers_on_task(process))
 
