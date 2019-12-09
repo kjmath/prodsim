@@ -58,7 +58,6 @@ class Process:
                 use None for infinite buffer.
             max_parts (scalar or None): maximum number of parts that can be processed 
                 simulaneously.
-
         '''
         self.name = name
         self.prob_dist = prob_dist 
@@ -70,10 +69,14 @@ class Process:
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
         self.next_crit_time = max_parts * [0] # initialize times of next completed processes        
 
+    def __str__(self):
+        return "{} with {} in process and {} in buffer".format(self.name, len(self.parts_in_process), len(self.parts_in_buffer))
+
+
     def start_process(self, prod_time, num_workers = 1):
         '''Start the process: update completion time, move first part in buffer
             to in process.'''
-        if None in self.parts_in_process:
+        if None in self.parts_in_process and num_workers > 0:
             part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
 
             if self.parts_in_buffer:
@@ -114,7 +117,8 @@ class Process:
         if num_workers > 0:
             self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time 
         else:
-            self.next_crit_time[part_index] = 0
+            print("No workers!")
+
 
     def is_buffer_full(self):
         '''Check if buffer BEFORE process is full.
@@ -164,6 +168,12 @@ class PartType:
         self.next_crit_time = [0]
         self.num_arrivals = 0
         self.throughput = 0
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
     def get_next_crit_time(self):
         '''Get arrival time for next part from probability distribution.
@@ -245,22 +255,26 @@ class Worker:
         self.name = name
         self.task = task
         self.idleTime = idleTime
+        self.part = None
 
     def __str__(self):
-        return 'Worker with name: {} and skills: {} is currently working on {}'.format(self.name, self.skills, self.task)
+        return 'Worker with name: {} and skills: {} is currently working on {} process and {} part'.format(self.name, self.skills, self.task, self.part)
     def is_idle(self):
         if self.task == None:
             return True
         return False
-    def assign_task(self, process):
+    def assign_task(self, task):
         '''Assigns worker to a process if the worker can do it'''
+        process = task
         if process.name in self.skills:
             self.task = process
             return True
         print(self.name, " cannot do task: ", process.name)
         return False
+    def assign_part(self, parts):
+        self.part = part
     def can_do(self, process):
-        if process in self.skills:
+        if process.name in self.skills:
             return True
         return False
     def get_name(self):
@@ -298,7 +312,6 @@ class Factory:
         for worker in self.workers:
             self.worker_assignments[worker] = None #initialize to idle workers.
         self.allocate_workers()
-        print(self.worker_assignments)
         for worker in self.workers:
             print(worker)
 
@@ -319,8 +332,8 @@ class Factory:
 
         # identify critical time process/part
         crit_obj, crit_index = self.find_crit_time_object(prod_time)
-        print(crit_obj.name)
-        print(prod_time)
+        #print(crit_obj.name)
+        #print(prod_time)
 
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
@@ -338,19 +351,24 @@ class Factory:
                     if part is not None and process.next_crit_time[part_index] <= prod_time:
                         update_count += part.end_process(process, part_index)
 
+
                     update_count += process.start_process(prod_time, self.get_num_workers_on_task(process))
 
         self.update_crit_time_dict()
+        print(self.crit_time_dict)
+        self.allocate_workers()
         # print(self.crit_time_dict)
-        print(self.worker_assignments)
+        # print(self.worker_assignments)
 
     def initialize_production(self):
         '''Initialize first processes with a part after factory creation. 
             Must run this before running update_factory() for first time.'''
-
+        print("Production Initialized")
         for part in self.part_types:
             part.add_arriving_part(0)
-
+        for process in self.all_processes:
+            print(process)
+        self.allocate_workers()
         self.update_crit_time_dict()
 
     def find_crit_time_object(self, prod_time):
@@ -396,12 +414,29 @@ class Factory:
         """
             Should assign idle worker to a task they can do
         """
-        for process in self.all_processes:
-            print("finding wokrers for: ", process.name)
-            for worker in self.workers:
-                if self.worker_assignments[worker] == None:
-                    print("Idle worker found, attempting to assign")
-                    if worker.can_do(process.name):
-                        print("found a match! assigning worker to : ", process.name)
-                        self.worker_assignments[worker] = process
-                        worker.assign_task(process)
+        #print("Allocating workers___________________________________________________________________________________")
+        
+        for worker in self.workers:
+            if worker.task is None: #Worker not assigned a process
+                for process in self.all_processes:
+                    if worker.can_do(process): # If this is something we can do
+                        if process.parts_in_buffer or process.parts_in_process:
+                            worker.assign_task(process)
+                            self.worker_assignments[worker] = (process, None)
+
+            #elif worker.part is None: #Worker has a process but no part
+
+        # for process in self.all_processes:
+        #     for part_index in range(process.max_parts):
+        #         print("finding wokrers for: ", process.name)
+        #         for worker in self.workers:
+        #             if (self.worker_assignments[worker] is None):
+        #                 print("Idle worker found, attempting to assign ", worker)
+
+        #                 (process.parts_in_process[part_index] is not None or process.parts_in_buffer):# or 
+        #                 #len(worker.skills) is 1):
+        #                 print("Idle worker found, attempting to assign")
+        #                 if worker.can_do(process.name):
+        #                     print("found a match! assigning worker to : ", process.name)
+        #                     self.worker_assignments[worker] = (process, part_index)
+        #                     worker.assign_task((process, part_index))

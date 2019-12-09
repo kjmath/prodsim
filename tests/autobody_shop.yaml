@@ -83,7 +83,7 @@ workers:
   - name: "Painter"
     skills: ['paint shop']
     quantity: 2
-  - name: "Detail Men"
+  - name: "Detail Worker"
     skills: ['detail']
     quantity: 2
 
