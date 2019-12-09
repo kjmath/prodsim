@@ -1,7 +1,7 @@
 """Main processing script for prodsim"""
 import argparse
 import os
-from prodsim.yaml_loader import yaml_loader
+from yaml_loader import yaml_loader
 
 def main(args):
 

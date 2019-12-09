@@ -15,10 +15,20 @@ processes:
     distribution: 'uniform'
     parameters: {'low': 45, 'high': 45}
     max_parts_in_process: 1
+    buffer_size: null
+  - name: 'HD body shop'
+    distribution: 'triangular'
+    parameters: {'left': 28, 'mode': 60.4, 'right': 100} #Check this last number
+    max_parts_in_process: 1
     buffer_size: null 
   - name: 'LD prep shop'
     distribution: 'uniform'
     parameters: {'low': 9, 'high': 9}
+    max_parts_in_process: 1
+    buffer_size: null
+  - name: 'HD prep shop'
+    distribution: 'triangular'
+    parameters: {'left': 4, 'mode': 8, 'right': 30}
     max_parts_in_process: 1
     buffer_size: null
   - name: 'paint shop'
@@ -43,6 +53,31 @@ part_types:
     part_arrival_distribution: 'exponential'
     part_arrival_parameters: {'scale': 3.2}
     process_list: ['repair garage', 'LD body shop', 'LD prep shop', 'paint shop', 'reassembly', 'detail']
+  - part_name: 'high damage'
+    part_arrival_distribution: 'exponential'
+    part_arrival_parameters: {'scale': 3.2}
+    process_list: ['repair garage', 'HD body shop', 'HD prep shop', 'paint shop', 'reassembly', 'detail']
+
+#Information about the workers and their skills, as described in the paper.
+workers:
+  - name: "Estimator"
+    skills: ['repair gararge']
+    quantity: 4
+  - name: "High Skill Body Worker"
+    skills: ['HD body shop', 'LD body shop', 'reassembly']
+    quantity: 3
+  - name: "Low Skill Body Worker"
+    skills: ['LD body shop', 'reassembly']
+    quantity: 7
+  - name: "Prep Shop Worker"
+    skills: ['HD prep shop', 'LD prep shop']
+    quantity: 4
+  - name: "Painter"
+    skills: ['paint shop']
+    quantity: 2
+  - name: "Detail Men"
+    skills: ['detail']
+    quantity: 2
 
 # Input desired length of simulation.
 simulation_time: 3000 # simulation duration in same time units as distributions.

@@ -1,6 +1,44 @@
 """Collection of classes for prod-sim"""
 import numpy as np
-from prodsim.helpers import weibull
+from helpers import weibull
+
+"""
+Change critical time on the fly--every time a part is finihsed, re-allocate workers
+
+New crit time = (old crit time-prod time) * old number of workers / new number of workers
+
+Need to link workers and processes -- update each time job is finished
+    minimize idle workers
+
+Assign workers to processes, not job.
+
+Make dictionary for workers--> process, maybe also process--> workers
+
+Change yaml loader to 
+    have second part type
+    HD vs LD arguement parameters
+
+Have worker class
+    -name
+    -job
+    -skill level (or list of processes it can do)
+
+Factory has
+    list of worker objects
+    list of processes
+    maps workers to proc and back
+    passes Number of workers into process as an arguemnt
+        process then scales critical time accordingly
+    MAKE SURE that we don't exceed 3 workers per process
+    
+Attrubite that keeps track of which partIndex a worker is assigned to.
+
+Whenever worker moves, update time dictionary
+
+Add worker inputs to yaml (make  max workers in yaml)
+"""
+
+
 
 class Process:
 
@@ -29,16 +67,16 @@ class Process:
         self.max_parts = max_parts
         self.parts_in_process = max_parts * [None] # list containing instances of PartType in process, or None
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
-        self.next_crit_time = max_parts * [0] # initialize times of next completed processes
+        self.next_crit_time = max_parts * [0] # initialize times of next completed processes        
 
-    def start_process(self, prod_time):
+    def start_process(self, prod_time, num_workers = 1):
         '''Start the process: update completion time, move first part in buffer
             to in process.'''
         if None in self.parts_in_process:
             part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
 
             if self.parts_in_buffer:
-                self.update_next_crit_time(prod_time, part_index)
+                self.update_next_crit_time(prod_time, part_index, num_workers)
                 self.parts_in_process[part_index] = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
                 return True
@@ -65,7 +103,7 @@ class Process:
         process_time = prob_dist_func(**self.params)
         return process_time
 
-    def update_next_crit_time(self, prod_time, part_index):
+    def update_next_crit_time(self, prod_time, part_index, num_workers = 1):
         ''' Update the next_crit_time attribute.
 
         Arguments:
@@ -73,7 +111,7 @@ class Process:
             part_index (scalar): index in parts_in_process list of relevant part
         '''
 
-        self.next_crit_time[part_index] = self.get_next_crit_time() + prod_time
+        self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time 
 
     def is_buffer_full(self):
         '''Check if buffer BEFORE process is full.
@@ -191,10 +229,38 @@ class PartType:
 
         self.update_next_crit_time(prod_time)
 
+class Worker:
+    def __init__(self, name, skills, task = None, idleTime = 0):
+        """ Initializes a single worker.
+        Arguments:
+            name: worker's name
+            skills: list of process names (not objects) worker can do
+            task: worker's current job. None if idle.
+            idleTime: a counter that stores idle time.
+        """
+        self.skils = skills
+        self.name = name
+        self.task = task
+        self.idleTime = idleTime
+    def is_idle(self):
+        if self.task == None:
+            return True
+        return False
+    def assign_task(self, process):
+        '''Assigns worker to a process if the worker can do it'''
+        if process in self.skills:
+            self.task = process
+            return True
+        print(self.name, " cannot do task: ", process)
+        return False
+    def can_do(self, process):
+        if process in self.skills:
+            return True
+        return False
 
 class Factory:
 
-    def __init__(self, part_types):
+    def __init__(self, part_types, workers = None):
         '''Create a factory object.
 
         Arguments:
@@ -219,6 +285,14 @@ class Factory:
 
         self.iterations = 0
 
+        # dict maps workers to process
+        # self.HS_workers = {}
+        # self.LS_workers = {}
+        # for i in range(0, num_HS_workers):
+        #     self.HS_workers[i] = None
+        # for i in range(0, num_LS_workers):
+        #     self.LS_workers[i] = None
+
     def update_factory(self, prod_time):
         '''Update the factory for current critical time: update process or incoming 
             part buffer for critical time.
@@ -232,11 +306,10 @@ class Factory:
         print(crit_obj.name)
         print(prod_time)
 
-
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
             crit_obj.add_arriving_part(prod_time)
-            crit_obj.process_stations[0].start_process(prod_time)
+            crit_obj.process_stations[0].start_process(prod_time)                      #ADD NUMBER OF WORKERS ON PROCESS HERE
         else:
             pass
             # print(crit_obj.parts_in_process)       
@@ -285,7 +358,6 @@ class Factory:
     def update_crit_time_dict(self):
         '''Update the crit_time_dict for all processes.
         '''
-
         for process in self.crit_time_dict:
             self.crit_time_dict[process] = process.next_crit_time
 

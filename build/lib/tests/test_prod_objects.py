@@ -1,6 +1,6 @@
 import unittest 
 
-from prodsim.prod_objects import Process
+from prod_objects import Process
 
 class TestProcessMethods(unittest.TestCase):
 

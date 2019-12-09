@@ -2,7 +2,7 @@
 import yaml
 import argparse
 import os
-from prodsim.prod_objects import Process, Factory, PartType
+from prod_objects import Process, Factory, PartType, Worker
 
 
 def yaml_loader(input_file):
@@ -25,6 +25,7 @@ def yaml_loader(input_file):
         # access data file inputs
         processes_input = data['processes']
         part_types_input = data['part_types']
+        workers_input = data['workers']
         sim_time = data['simulation_time']
 
         # create list of all process objects
@@ -59,8 +60,17 @@ def yaml_loader(input_file):
                 part_type_name, part_arrival_dist, part_arrival_params, process_list)
             part_type_objects.append(part_type_inst)
 
+        #create workers
+        worker_objects = []
+        for worker in workers_input:
+            for i in range(0,worker['quantity']):
+                worker_name = worker['name']
+                worker_skills = worker['skills']
+                worker_objects.append(Worker(worker_name, worker_skills))
+
+
         # create factory object
-        factory_object = Factory(part_type_objects)
+        factory_object = Factory(part_type_objects, worker_objects)
 
         return factory_object, sim_time
 
