@@ -42,7 +42,7 @@ Add worker inputs to yaml (make  max workers in yaml)
 
 class Process:
 
-    def __init__(self, name, prob_dist, params, buffer_cap, max_parts):
+    def __init__(self, name, prob_dist, params, buffer_cap, max_parts = 1, max_workers = 1):
         '''Create a production process object. Assumes no more than one part can be 
             currently in the process.
 
@@ -65,6 +65,7 @@ class Process:
         self.params = params 
         self.buffer_cap = buffer_cap 
         self.max_parts = max_parts
+        self.max_workers = max_workers
         self.parts_in_process = max_parts * [None] # list containing instances of PartType in process, or None
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
         self.next_crit_time = max_parts * [0] # initialize times of next completed processes        
@@ -110,8 +111,10 @@ class Process:
             prod_time (scalar): current production/factory time of the simulation.
             part_index (scalar): index in parts_in_process list of relevant part
         '''
-
-        self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time 
+        if num_workers > 0:
+            self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time 
+        else:
+            self.next_crit_time[part_index] = 0
 
     def is_buffer_full(self):
         '''Check if buffer BEFORE process is full.
@@ -238,34 +241,40 @@ class Worker:
             task: worker's current job. None if idle.
             idleTime: a counter that stores idle time.
         """
-        self.skils = skills
+        self.skills = skills
         self.name = name
         self.task = task
         self.idleTime = idleTime
+
+    def __str__(self):
+        return 'Worker with name: {} and skills: {} is currently working on {}'.format(self.name, self.skills, self.task)
     def is_idle(self):
         if self.task == None:
             return True
         return False
     def assign_task(self, process):
         '''Assigns worker to a process if the worker can do it'''
-        if process in self.skills:
+        if process.name in self.skills:
             self.task = process
             return True
-        print(self.name, " cannot do task: ", process)
+        print(self.name, " cannot do task: ", process.name)
         return False
     def can_do(self, process):
         if process in self.skills:
             return True
         return False
+    def get_name(self):
+        return self.name
 
 class Factory:
 
-    def __init__(self, part_types, workers = None):
+    def __init__(self, part_types, workers = []):
         '''Create a factory object.
 
         Arguments:
             part_types (list of ProductionLine objects): list of production 
                 lines in factory.
+            workers: list of worker objects in factory
         '''
 
         self.part_types = part_types
@@ -284,14 +293,21 @@ class Factory:
         self.crit_time_dict = crit_time_dict
 
         self.iterations = 0
+        self.workers = workers
+        self.worker_assignments = {} #maps workers to task
+        for worker in self.workers:
+            self.worker_assignments[worker] = None #initialize to idle workers.
+        self.allocate_workers()
+        print(self.worker_assignments)
+        for worker in self.workers:
+            print(worker)
 
-        # dict maps workers to process
-        # self.HS_workers = {}
-        # self.LS_workers = {}
-        # for i in range(0, num_HS_workers):
-        #     self.HS_workers[i] = None
-        # for i in range(0, num_LS_workers):
-        #     self.LS_workers[i] = None
+    def get_num_workers_on_task(self, task):
+        total = 0
+        for worker in self.workers:
+            if self.worker_assignments[worker] == task:
+                total += 1
+        return total
 
     def update_factory(self, prod_time):
         '''Update the factory for current critical time: update process or incoming 
@@ -309,7 +325,7 @@ class Factory:
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
             crit_obj.add_arriving_part(prod_time)
-            crit_obj.process_stations[0].start_process(prod_time)                      #ADD NUMBER OF WORKERS ON PROCESS HERE
+            crit_obj.process_stations[0].start_process(prod_time, self.get_num_workers_on_task(crit_obj.process_stations[0]))                      #ADD NUMBER OF WORKERS ON PROCESS HERE
         else:
             pass
             # print(crit_obj.parts_in_process)       
@@ -322,10 +338,11 @@ class Factory:
                     if part is not None and process.next_crit_time[part_index] <= prod_time:
                         update_count += part.end_process(process, part_index)
 
-                    update_count += process.start_process(prod_time)
+                    update_count += process.start_process(prod_time, self.get_num_workers_on_task(process))
 
         self.update_crit_time_dict()
         # print(self.crit_time_dict)
+        print(self.worker_assignments)
 
     def initialize_production(self):
         '''Initialize first processes with a part after factory creation. 
@@ -374,3 +391,17 @@ class Factory:
                     times.append(time)
 
         return min(times)
+
+    def allocate_workers(self):
+        """
+            Should assign idle worker to a task they can do
+        """
+        for process in self.all_processes:
+            print("finding wokrers for: ", process.name)
+            for worker in self.workers:
+                if self.worker_assignments[worker] == None:
+                    print("Idle worker found, attempting to assign")
+                    if worker.can_do(process.name):
+                        print("found a match! assigning worker to : ", process.name)
+                        self.worker_assignments[worker] = process
+                        worker.assign_task(process)
