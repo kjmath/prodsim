@@ -7,50 +7,50 @@
 # See helpers.py for documentation of Weibull distribution sampling.
 processes:
   - name: 'repair garage' # a unique string identifying the process
-    distribution: 'uniform' # must be distribution supported by numpy.random
-    parameters: {'low': 0.67, 'high': 0.67} # parameter dictionary keys must be exactly same as numpy.random
-    max_parts_in_process: 1 # maximum number of parts that can be serviced simultaneously
+    distribution: 'triangular' # must be distribution supported by numpy.random
+    parameters: {'left': 9.4, 'mode': 13.5, 'right': 18} # parameter dictionary keys must be exactly same as numpy.random
+    max_parts_in_process: 2 # maximum number of parts that can be serviced simultaneously
     max_workers_per_part: 3 # maximum number of workers that can work on the same part simultaneously
     buffer_size: null # size of buffer BEFORE process, use null for infinite buffer
   - name: 'LD body shop'
-    distribution: 'uniform'
-    parameters: {'low': 45, 'high': 45}
-    max_parts_in_process: 1
+    distribution: 'triangular'
+    parameters: {'left': 2.3, 'mode': 16.6, 'right': 27.1}
+    max_parts_in_process: 3
     max_workers_per_part: 3
     buffer_size: null
   - name: 'HD body shop'
     distribution: 'triangular'
-    parameters: {'left': 28, 'mode': 60.4, 'right': 100} #Check this last number
-    max_parts_in_process: 1
+    parameters: {'left': 28, 'mode': 28, 'right': 60.4}
+    max_parts_in_process: 3
     max_workers_per_part: 3
     buffer_size: null 
   - name: 'LD prep shop'
-    distribution: 'uniform'
-    parameters: {'low': 9, 'high': 9}
-    max_parts_in_process: 1
+    distribution: 'weibull'
+    parameters: {'a': 3, 'scale': 2.97}
+    max_parts_in_process: 3
     max_workers_per_part: 3
     buffer_size: null
   - name: 'HD prep shop'
     distribution: 'triangular'
     parameters: {'left': 4, 'mode': 8, 'right': 30}
-    max_parts_in_process: 1
+    max_parts_in_process: 2
     max_workers_per_part: 3
     buffer_size: null
   - name: 'paint shop'
     distribution: 'uniform'
-    parameters: {'low': 0.75, 'high': 0.75}
+    parameters: {'low': 0.45, 'high': 3.48}
     max_parts_in_process: 1
     max_workers_per_part: 3
     buffer_size: null
   - name: 'reassembly'
-    distribution: 'uniform'
-    parameters: {'low': 2.19, 'high': 2.19}
+    distribution: 'weibull'
+    parameters: {'a': 1, 'scale': 1.98}
     max_parts_in_process: 1
     max_workers_per_part: 3
     buffer_size: null
   - name: 'detail'
-    distribution: 'uniform'
-    parameters: {'low': 1.3, 'high': 1.3}
+    distribution: 'exponential'
+    parameters: {'scale': 0.5}
     max_parts_in_process: 1
     max_workers_per_part: 3
     buffer_size: null
@@ -59,11 +59,11 @@ processes:
 part_types:
   - part_name: 'low damage'
     part_arrival_distribution: 'exponential'
-    part_arrival_parameters: {'scale': 3.2}
+    part_arrival_parameters: {'scale': 5.23}
     process_list: ['repair garage', 'LD body shop', 'LD prep shop', 'paint shop', 'reassembly', 'detail']
   - part_name: 'high damage'
     part_arrival_distribution: 'exponential'
-    part_arrival_parameters: {'scale': 3.2}
+    part_arrival_parameters: {'scale': 12.21}
     process_list: ['repair garage', 'HD body shop', 'HD prep shop', 'paint shop', 'reassembly', 'detail']
 
 #Information about the workers and their skills, as described in the paper.
@@ -88,5 +88,5 @@ workers:
     quantity: 2
 
 # Input desired length of simulation.
-simulation_time: 3000 # simulation duration in same time units as distributions.
+simulation_time: 1584 # simulation duration in same time units as distributions.
 time_units: 'hours'

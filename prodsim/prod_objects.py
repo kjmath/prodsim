@@ -1,50 +1,13 @@
 """Collection of classes for prod-sim"""
 import numpy as np
+import random as rand
 from helpers import weibull
-
-"""
-Change critical time on the fly--every time a part is finihsed, re-allocate workers
-
-New crit time = (old crit time-prod time) * old number of workers / new number of workers
-
-Need to link workers and processes -- update each time job is finished
-    minimize idle workers
-
-Assign workers to processes, not job.
-
-Make dictionary for workers--> process, maybe also process--> workers
-
-Change yaml loader to 
-    have second part type
-    HD vs LD arguement parameters
-
-Have worker class
-    -name
-    -job
-    -skill level (or list of processes it can do)
-
-Factory has
-    list of worker objects
-    list of processes
-    maps workers to proc and back
-    passes Number of workers into process as an arguemnt
-        process then scales critical time accordingly
-    MAKE SURE that we don't exceed 3 workers per process
-    
-Attrubite that keeps track of which partIndex a worker is assigned to.
-
-Whenever worker moves, update time dictionary
-
-Add worker inputs to yaml (make  max workers in yaml)
-"""
-
 
 
 class Process:
 
-    def __init__(self, name, prob_dist, params, buffer_cap, max_parts = 1, max_workers = 1):
-        '''Create a production process object. Assumes no more than one part can be 
-            currently in the process.
+    def __init__(self, name, prob_dist, params, buffer_cap, max_parts=1, max_workers=1):
+        '''Create a production process object. 
 
         Arguments:
             name (string): Unique name of the process.
@@ -67,23 +30,32 @@ class Process:
         self.max_workers = max_workers
         self.parts_in_process = max_parts * [None] # list containing instances of PartType in process, or None
         self.parts_in_buffer = [] # list of PartType instances in buffer, index 0 is first in line
-        self.next_crit_time = max_parts * [0] # initialize times of next completed processes        
+        self.next_crit_time = max_parts * [-1] # initialize times of next completed processes        
 
     def __str__(self):
         return "{} with {} in process and {} in buffer".format(self.name, len(self.parts_in_process), len(self.parts_in_buffer))
 
+    def __repr__(self):
+        return self.name
 
-    def start_process(self, prod_time, num_workers = 1):
+    def start_process(self, prod_time, part_index, num_workers):
         '''Start the process: update completion time, move first part in buffer
             to in process.'''
-        if None in self.parts_in_process and num_workers > 0:
-            part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
+        if None in self.parts_in_process:
+            # part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
 
-            if self.parts_in_buffer:
+            # if parts and workers are available, start process
+            if self.parts_in_buffer and num_workers > 0:
                 self.update_next_crit_time(prod_time, part_index, num_workers)
                 self.parts_in_process[part_index] = self.parts_in_buffer[0]
                 self.remove_first_in_buffer()
                 return True
+
+            # if parts are available but no workers, put flag in dictionary
+            elif self.parts_in_buffer and num_workers == 0:
+                self.next_crit_time[part_index] = -1
+
+            #otherwise
             else:
                 # set to 0 so simulator can move forward and try again on next iteration
                 # print('no parts in buffer')
@@ -107,17 +79,31 @@ class Process:
         process_time = prob_dist_func(**self.params)
         return process_time
 
-    def update_next_crit_time(self, prod_time, part_index, num_workers = 1):
+    def update_next_crit_time(self, prod_time, part_index, num_workers):
         ''' Update the next_crit_time attribute.
 
         Arguments:
             prod_time (scalar): current production/factory time of the simulation.
-            part_index (scalar): index in parts_in_process list of relevant part
+            part_index (scalar): index in parts_in_process list of relevant part.
+            num_workers (scalar): number of workers assigned to process.
         '''
-        if num_workers > 0:
-            self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time 
-        else:
-            print("No workers!")
+
+        self.next_crit_time[part_index] = self.get_next_crit_time() / num_workers + prod_time
+
+
+    def adjust_next_crit_time(self, prod_time, part_index, old_num_workers, new_num_workers):
+        ''' Adjust the next_crit_time attribute if the number of workers changes.
+
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
+            part_index (scalar): index in parts_in_process list of relevant part.
+            old_num_workers (scalar): the total number of workers previously assigned to part.
+            new_num_workers (scalar): the total number of workers currently assigned to part.
+        '''
+        crit_time = self.next_crit_time[part_index]
+
+        self.next_crit_time[part_index] = ((crit_time - prod_time) * old_num_workers / 
+                                           new_num_workers + prod_time )
 
 
     def is_buffer_full(self):
@@ -222,8 +208,10 @@ class PartType:
                 process.next_crit_time[part_index] = 0
                 self.process_stations[proc_index + 1].add_to_buffer(self)
                 return True
-
-        process.next_crit_time[part_index] = 0 # set to 0 so simulator can try ending on next critical time
+            # process cannot be ended
+            else:
+                process.next_crit_time[part_index] = 0 # set to 0 so simulator can try ending on next critical time
+        
         return False
 
     def add_arriving_part(self, prod_time):
@@ -243,6 +231,7 @@ class PartType:
         self.update_next_crit_time(prod_time)
 
 class Worker:
+
     def __init__(self, name, skills, task = None, idleTime = 0):
         """ Initializes a single worker.
         Arguments:
@@ -259,39 +248,45 @@ class Worker:
 
     def __str__(self):
         return 'Worker with name: {} and skills: {} is currently working on {} process and {} part'.format(self.name, self.skills, self.task, self.part)
+
     def is_idle(self):
-        if self.task == None:
+        if self.task is None:
             return True
         return False
+
     def assign_task(self, task):
         '''Assigns worker to a process if the worker can do it'''
         process = task
         if process.name in self.skills:
             self.task = process
             return True
-        print(self.name, " cannot do task: ", process.name)
+        # print(self.name, " cannot do task: ", process.name)
         return False
-    def assign_part(self, parts):
+
+    def assign_part(self, part):
         self.part = part
+
     def can_do(self, process):
         if process.name in self.skills:
             return True
         return False
+
     def get_name(self):
         return self.name
 
 class Factory:
 
-    def __init__(self, part_types, workers = []):
+    def __init__(self, part_types, workers):
         '''Create a factory object.
 
         Arguments:
             part_types (list of ProductionLine objects): list of production 
                 lines in factory.
-            workers: list of worker objects in factory
+            workers (list of Worker objects): list of worker objects in factory
         '''
 
         self.part_types = part_types
+        self.workers = workers
 
         all_processes = [] # list for storing all factory processes
         crit_time_dict = {} # dictionary for storing simulator critical times
@@ -307,13 +302,12 @@ class Factory:
         self.crit_time_dict = crit_time_dict
 
         self.iterations = 0
-        self.workers = workers
         self.worker_assignments = {} #maps workers to task
         for worker in self.workers:
             self.worker_assignments[worker] = None #initialize to idle workers.
-        self.allocate_workers()
-        for worker in self.workers:
-            print(worker)
+        # self.allocate_workers() #TODO move to main.py
+        #for worker in self.workers:
+        #    print(worker)
 
     def get_num_workers_on_task(self, task):
         total = 0
@@ -338,7 +332,7 @@ class Factory:
         # if part type, add part to first process buffer
         if isinstance(crit_obj, PartType):
             crit_obj.add_arriving_part(prod_time)
-            crit_obj.process_stations[0].start_process(prod_time, self.get_num_workers_on_task(crit_obj.process_stations[0]))                      #ADD NUMBER OF WORKERS ON PROCESS HERE
+            crit_obj.process_stations[0].start_process(prod_time, 0, self.get_num_workers_on_task(crit_obj.process_stations[0]))                      #ADD NUMBER OF WORKERS ON PROCESS HERE
         else:
             pass
             # print(crit_obj.parts_in_process)       
@@ -349,17 +343,18 @@ class Factory:
             for process in self.all_processes:
                 for part_index, part in enumerate(process.parts_in_process):
                     if part is not None and process.next_crit_time[part_index] <= prod_time:
-                        update_count += part.end_process(process, part_index)
-                        """
-                        for worker that is assigned to process
-                            worker task = None
-                        """
+                        end_successs = part.end_process(process, part_index)
+                        update_count += end_successs
+                        if end_successs:
+                            self.end_work(process, part_index)
 
-                    update_count += process.start_process(prod_time, self.get_num_workers_on_task(process))
+                    self.allocate_workers(prod_time)
+                    # print(self.get_num_workers_on_task((process, part_index)))
+                    update_count += process.start_process(prod_time, part_index, self.get_num_workers_on_task((process, part_index)))
 
         self.update_crit_time_dict()
-        print(self.crit_time_dict)
-        self.allocate_workers()
+        # print(self.crit_time_dict)
+        
         # print(self.crit_time_dict)
         # print(self.worker_assignments)
 
@@ -369,9 +364,9 @@ class Factory:
         print("Production Initialized")
         for part in self.part_types:
             part.add_arriving_part(0)
-        for process in self.all_processes:
-            print(process)
-        self.allocate_workers()
+        #for process in self.all_processes:
+            # print(process)
+        self.allocate_workers(0)
         self.update_crit_time_dict()
 
     def find_crit_time_object(self, prod_time):
@@ -413,33 +408,118 @@ class Factory:
 
         return min(times)
 
-    def allocate_workers(self):
+    def allocate_workers(self, prod_time):
+        """Assigns available workers to appropriate tasks. 
+
+        Arguments:
+            prod_time (scalar): current production/factory time of the simulation.
         """
-            Should assign idle worker to a task they can do
+
+        allocation_counter = 0
+        available_workers = self.get_available_workers()
+        flagged_processes = self.get_flagged_processes()
+
+        times = []
+        for time_list in self.crit_time_dict.values():
+            for time in time_list:
+                if time > 0:
+                    times.append(time)
+
+        times.sort() # sort critical times in ascending order
+
+        # first assign workers to parts that will finish their process the soonest
+        for time in times:
+
+            test_process, test_part_index = self.find_crit_time_object(time)
+            
+            # if test process is a PartType, skip current loop and continue to next loop
+            if isinstance(test_process, PartType):
+                continue
+
+            workers_on_task = self.get_num_workers_on_task((test_process, test_part_index))
+            
+            for worker in available_workers:
+
+                if workers_on_task >= test_process.max_workers:
+                    break
+
+                if worker.can_do(test_process):
+                    worker.assign_task(test_process)
+                    # print("worker assigned to ", test_process.name)
+                    worker.assign_part(test_part_index)
+                    self.worker_assignments[worker] = (test_process, test_part_index)
+                    test_process.adjust_next_crit_time(prod_time, test_part_index, 
+                                                       workers_on_task, workers_on_task+1)
+                    workers_on_task += 1
+                    allocation_counter += 1
+                    available_workers = self.get_available_workers()
+
+        # then assign workers to parts that have not been started, but are awaiting a worker
+        rand.shuffle(flagged_processes)
+        for flag in flagged_processes:
+
+            (test_process, test_part_index) = flag
+            workers_on_task = self.get_num_workers_on_task((test_process, test_part_index))
+            
+            for worker in available_workers:
+
+                if workers_on_task >= test_process.max_workers:
+                    break
+
+                if worker.can_do(test_process):
+                    worker.assign_task(test_process)
+                    # print("worker assigned to ", test_process.name, " index ", str(test_part_index))
+                    worker.assign_part(test_part_index)
+                    self.worker_assignments[worker] = (test_process, test_part_index)
+                    test_process.adjust_next_crit_time(prod_time, test_part_index, 
+                                                       workers_on_task, workers_on_task+1)
+                    workers_on_task += 1
+                    allocation_counter += 1
+                    available_workers = self.get_available_workers()
+
+        return allocation_counter
+
+    def end_work(self, process, part_index):
+        """End work for workers for a specified process and part index.
+
+        Arguments:
+            process (Process object): process for work to be ended.
+            part_index (scalar): index of part in process for work to be ended.            
         """
-        #print("Allocating workers___________________________________________________________________________________")
-        
+
+        for worker in self.worker_assignments:
+            if self.worker_assignments[worker] == (process, part_index):
+                self.worker_assignments[worker] = None
+                worker.task = None
+                worker.part = None
+
+    def get_available_workers(self):
+        """Create a list of unassigned workers.
+
+        Returns:
+            List of worker objects that are unassigned to a task.
+        """
+
+        avail_workers = []
+
         for worker in self.workers:
-            if worker.task is None: #Worker not assigned a process
-                for process in self.all_processes:
-                    if worker.can_do(process): # If this is something we can do
-                        if process.parts_in_buffer or process.parts_in_process:
-                            worker.assign_task(process)
-                            self.worker_assignments[worker] = (process, None)
+            if worker.task is None:
+                avail_workers.append(worker)
 
-            #elif worker.part is None: #Worker has a process but no part
+        return avail_workers
 
-        # for process in self.all_processes:
-        #     for part_index in range(process.max_parts):
-        #         print("finding wokrers for: ", process.name)
-        #         for worker in self.workers:
-        #             if (self.worker_assignments[worker] is None):
-        #                 print("Idle worker found, attempting to assign ", worker)
+    def get_flagged_processes(self):
+        """ Return list of process for production once worker is available.
 
-        #                 (process.parts_in_process[part_index] is not None or process.parts_in_buffer):# or 
-        #                 #len(worker.skills) is 1):
-        #                 print("Idle worker found, attempting to assign")
-        #                 if worker.can_do(process.name):
-        #                     print("found a match! assigning worker to : ", process.name)
-        #                     self.worker_assignments[worker] = (process, part_index)
-        #                     worker.assign_task((process, part_index))
+        Returns:
+            List of (Process object, part index) tuples for processes/part indices
+                to begin production once worker is available. 
+        """
+
+        process_list = []
+        for process in self.crit_time_dict:
+            for part_index, time in enumerate(self.crit_time_dict[process]):
+                if time == -1:
+                    process_list.append((process, part_index))
+
+        return process_list

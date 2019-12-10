@@ -12,6 +12,8 @@ def main(args):
 
     while prod_time < sim_time:
 
+        print(prod_time)
+
         factory.update_factory(prod_time)
         prod_time = factory.get_next_crit_time()
         
@@ -25,8 +27,8 @@ def main(args):
         for process in part.process_stations:
             print('buffer size of ' + str(process.name) + ': ' + str(len(process.parts_in_buffer)))
 
-    for worker in factory.workers:
-        print(worker)
+    #for worker in factory.workers:
+    #    print(worker)
 
 if __name__ == '__main__':
 
