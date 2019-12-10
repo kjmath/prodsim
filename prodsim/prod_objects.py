@@ -21,7 +21,10 @@ class Process:
                 use None for infinite buffer.
             max_parts (scalar or None): maximum number of parts that can be processed 
                 simulaneously.
+            max_workers (scalar): maximum number of workers than can be working simultaneously
+                on a part.
         '''
+
         self.name = name
         self.prob_dist = prob_dist 
         self.params = params 
@@ -40,7 +43,14 @@ class Process:
 
     def start_process(self, prod_time, part_index, num_workers):
         '''Start the process: update completion time, move first part in buffer
-            to in process.'''
+            to in process.
+
+            Arguments:
+                prod_time (scalar): current production/factory time of the simulation.
+                part_index (scalar): index in parts_in_process list of relevant part.
+                num_workers (scalar): number of workers assigned to process.
+            '''
+        
         if None in self.parts_in_process:
             # part_index = next(ind for ind, val in enumerate(self.parts_in_process) if val is None)
 
@@ -100,6 +110,7 @@ class Process:
             old_num_workers (scalar): the total number of workers previously assigned to part.
             new_num_workers (scalar): the total number of workers currently assigned to part.
         '''
+
         crit_time = self.next_crit_time[part_index]
 
         self.next_crit_time[part_index] = ((crit_time - prod_time) * old_num_workers / 
@@ -147,6 +158,7 @@ class PartType:
             process_stations (list of Process objects): ordered list of Process objects representing the
                 production line for the part. 
         '''
+
         self.name = name
         self.arrival_prob_dist = arrival_prob_dist
         self.arrival_params = arrival_params
@@ -255,7 +267,11 @@ class Worker:
         return False
 
     def assign_task(self, task):
-        '''Assigns worker to a process if the worker can do it'''
+        '''Assigns worker to a process if the worker can do it.
+
+        Returns:
+            boolean: True if task is assigned, False otherwise.'''
+
         process = task
         if process.name in self.skills:
             self.task = process
@@ -305,9 +321,8 @@ class Factory:
         self.worker_assignments = {} #maps workers to task
         for worker in self.workers:
             self.worker_assignments[worker] = None #initialize to idle workers.
-        # self.allocate_workers() #TODO move to main.py
-        #for worker in self.workers:
-        #    print(worker)
+    
+        # allocate lists for interesting things
 
     def get_num_workers_on_task(self, task):
         total = 0
@@ -353,14 +368,12 @@ class Factory:
                     update_count += process.start_process(prod_time, part_index, self.get_num_workers_on_task((process, part_index)))
 
         self.update_crit_time_dict()
-        # print(self.crit_time_dict)
         
-        # print(self.crit_time_dict)
-        # print(self.worker_assignments)
 
     def initialize_production(self):
         '''Initialize first processes with a part after factory creation. 
             Must run this before running update_factory() for first time.'''
+        
         print("Production Initialized")
         for part in self.part_types:
             part.add_arriving_part(0)
