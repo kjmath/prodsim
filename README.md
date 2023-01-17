@@ -17,7 +17,7 @@ The main logic exists in the ```Factory``` class, which has an ```update_factory
 
 # Usage
 
- This simulator uses yaml configuration files to specify production parameters. See *tests* folder for example yaml files.
+ This simulator uses yaml configuration files to specify production parameters. See **tests** folder for example yaml files. The yaml file is supplied as a command-line argument:
 
 ```python main.py path-to-yaml-config-file```
 
