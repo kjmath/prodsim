@@ -36,8 +36,9 @@ def yaml_loader(input_file):
             process_params = process['parameters']
             process_buffer = process['buffer_size']
             process_max_parts = process['max_parts_in_process']
+            process_max_workers = process['max_workers_per_part']
             process_instance = Process(
-                process_name, process_dist, process_params, process_buffer, process_max_parts)
+                process_name, process_dist, process_params, process_buffer, process_max_parts, process_max_workers)
             process_objects.append(process_instance)
 
         process_dict = {} # map process name to object
@@ -64,10 +65,9 @@ def yaml_loader(input_file):
         worker_objects = []
         for worker in workers_input:
             for i in range(0,worker['quantity']):
-                worker_name = worker['name']
+                worker_name = worker['name'] + str(i)
                 worker_skills = worker['skills']
                 worker_objects.append(Worker(worker_name, worker_skills))
-
 
         # create factory object
         factory_object = Factory(part_type_objects, worker_objects)
